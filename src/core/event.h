@@ -5,20 +5,43 @@
 #include <vector>
 
 enum class EventType {
-  ApplicationClose
+  ApplicationClose,
+  MouseMove
 };
+
+// Used for event filtering
+const uint8_t EVENT_APPLICATION = 0b00000010;
+const uint8_t EVENT_OTHER       = 0b00000001;
 
 struct Event {
   EventType type;
-  explicit Event(EventType type) : type(type) { }
+  uint8_t signature = 0x00;
+
+  explicit Event(EventType type, uint8_t sig)
+      : type(type), signature(sig) { }
   virtual const char* ToString() const = 0;
 };
 struct ApplicationCloseEvent : Event {
-  ApplicationCloseEvent() : Event(EventType::ApplicationClose) { }
+  ApplicationCloseEvent()
+      : Event(EventType::ApplicationClose, EVENT_APPLICATION) { }
+
   const char* ToString() const override {
     return "ApplicationClose";
   }
 };
+struct MouseMoveEvent : Event {
+  int x, y;
+
+  MouseMoveEvent(int x, int y)
+      : Event(EventType::MouseMove, EVENT_OTHER),
+        x(x), y(y) { }
+
+  const char* ToString() const override {
+    return "MouseMove";
+  }
+};
+
+// auto const& mouse = dynamic_cast<const MouseMoveEvent&>(event);
 
 typedef std::function<void(const Event&)> EventFn;
 

@@ -23,6 +23,9 @@ int main() {
   while (true) {
     if (SDL_PollEvent(&sdlEvent)) {
       if (sdlEvent.type == SDL_QUIT) break;
+      if (sdlEvent.type == SDL_MOUSEMOTION) {
+        gEventHandler.Post(MouseMoveEvent(sdlEvent.motion.x, sdlEvent.motion.y));
+      }
     }
 
     // Update logic
@@ -39,7 +42,6 @@ int main() {
   }
 
   gEventHandler.Post(ApplicationCloseEvent());
-
   spdlog::info("Program execution finished.");
   return 0;
 }
