@@ -50,22 +50,29 @@ GameWindow::GameWindow(const char *title, uint32_t width, uint32_t height) {
 
   int gladLoadSuccess = gladLoadGLLoader(SDL_GL_GetProcAddress);
   assert(gladLoadSuccess);
+
+  // OpenGL options
+  glEnable(GL_MULTISAMPLE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glClearColor(0.f, 0.f, 0.f, 1.f);
+  // glViewport(0, 0, width, height);
 }
 GameWindow::~GameWindow() {
   SDL_GL_DeleteContext(gl_context);
   SDL_Quit();
 }
 
-uint32_t GameWindow::width() const {
+uint32_t GameWindow::Width() const {
   return window_width;
 }
 
-uint32_t GameWindow::height() const {
+uint32_t GameWindow::Height() const {
   return window_height;
 }
 
 /// Returns the time (in seconds) since the previous calling of dt()
-float GameWindow::dt() {
+float GameWindow::Dt() {
   // Calculate the delta time from the previous call to dt()
   uint32_t ticks = SDL_GetTicks();
   float dt = float(ticks - clock) * 0.001f;
@@ -74,6 +81,6 @@ float GameWindow::dt() {
   return dt;
 }
 
-void GameWindow::swap_buffers() {
+void GameWindow::SwapBuffers() {
   SDL_GL_SwapWindow(sdl_window);
 }

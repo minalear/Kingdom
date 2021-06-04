@@ -18,10 +18,10 @@ public:
   void Use() const;
 
   void SetUniform(const char* name, bool value);
-  void SetUniform(const char* name, glm::vec2 &value);
-  void SetUniform(const char* name, glm::vec3 &value);
-  void SetUniform(const char* name, glm::vec4 &value);
-  void SetUniform(const char* name, glm::mat4 &value);
+  void SetUniform(const char* name, const glm::vec2 &value);
+  void SetUniform(const char* name, const glm::vec3 &value);
+  void SetUniform(const char* name, const glm::vec4 &value);
+  void SetUniform(const char* name, const glm::mat4 &value);
 };
 
 

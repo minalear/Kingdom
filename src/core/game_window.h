@@ -16,10 +16,10 @@ public:
   GameWindow(const char* title, uint32_t width, uint32_t height);
   ~GameWindow();
 
-  uint32_t width() const;
-  uint32_t height() const;
-  float dt();
-  void swap_buffers();
+  uint32_t Width() const;
+  uint32_t Height() const;
+  float Dt();
+  void SwapBuffers();
 };
 
 #endif //KINGDOM_GAME_WINDOW_H

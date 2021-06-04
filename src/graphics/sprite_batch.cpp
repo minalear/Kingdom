@@ -36,10 +36,6 @@ const char* FRAGMENT_SHADER_SOURCE =
     "}"
 ;
 
-void SpriteBatch::draw(const Texture2D &texture, const glm::mat4 &model) {
-
-}
-
 SpriteBatch::SpriteBatch(const int bufferWidth, const int bufferHeight)
     : shaderProgram(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE)
 {
@@ -88,6 +84,18 @@ SpriteBatch::~SpriteBatch() {
   glDeleteVertexArrays(1, &vao);
 }
 
+// Private methods
+void SpriteBatch::draw(const Texture2D &texture, const glm::mat4 &model) {
+  shaderProgram.Use();
+  shaderProgram.SetUniform("model", model);
+
+  texture.Bind();
+  glBindVertexArray(vao);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
+  glBindVertexArray(0);
+}
+
+// Public methods
 void SpriteBatch::Resize(const int bufferWidth, const int bufferHeight) { }
 
 void SpriteBatch::Draw(const Texture2D &texture, const glm::mat4 &model) {
