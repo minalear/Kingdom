@@ -3,16 +3,16 @@
 #include "core/game_window.h"
 #include "graphics/sprite_batch.h"
 #include "graphics/texture_2d.h"
+#include "spdlog/spdlog.h"
 
 int main() {
+  spdlog::info("Initializing game...");
   const int viewport_width = 1280;
   const int viewport_height = 720;
 
   auto window = GameWindow("Kingdom", viewport_width, viewport_height);
   auto spriteBatch = SpriteBatch(viewport_width, viewport_height);
   auto texture = Texture2D("content/textures/placeholder.png");
-
-  printf("texture: (%i, %i)", texture.Width(), texture.Height());
 
   // fixed step logic
   float timer = window.Dt();
@@ -37,5 +37,6 @@ int main() {
     window.SwapBuffers();
   }
 
+  spdlog::info("Program execution finished.");
   return 0;
 }

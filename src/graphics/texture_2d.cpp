@@ -3,6 +3,7 @@
 #define STBI_ONLY_PNG
 #include "stb_image.h"
 #include "glad/glad.h"
+#include "spdlog/spdlog.h"
 
 Texture2D::Texture2D(const char *path) {
   auto data = stbi_load(path, &width, &height, &nBits, STBI_rgb_alpha);
@@ -21,6 +22,9 @@ Texture2D::Texture2D(const char *path) {
 
   glBindTexture(GL_TEXTURE_2D, 0); // unbind texture
   stbi_image_free(data); // free texture data
+
+  spdlog::info("Texture created: {} id: {}, ({}x{})",
+               path, id, width, height);
 }
 Texture2D::~Texture2D() {
   glDeleteTextures(1, &id);

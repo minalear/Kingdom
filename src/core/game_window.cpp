@@ -1,6 +1,7 @@
 #include <cassert>
 #include "game_window.h"
 #include "glad/glad.h"
+#include "spdlog/spdlog.h"
 
 const int OPENGL_MAJOR_VERSION = 4;
 const int OPENGL_MINOR_VERSION = 0;
@@ -11,6 +12,7 @@ GameWindow::GameWindow(const char *title, uint32_t width, uint32_t height) {
   // Initialize SDL and create a window
   SDL_Init(SDL_INIT_VIDEO);
 
+  spdlog::info("Initializing SDL and OpenGL (Core Profile, v4.0)");
   // Set SDL OpenGL attributes (core profile, opengl v4.0)
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, OPENGL_MAJOR_VERSION);
@@ -32,7 +34,8 @@ GameWindow::GameWindow(const char *title, uint32_t width, uint32_t height) {
   window_width = uint32_t(width * dpi / 96.f);
   window_height = uint32_t(height * dpi / 96.f);
 
-  // TODO: Implement logging
+  spdlog::info("Creating SDL window: ({}, {}), dpi {}",
+               window_width, window_height, dpi);
 
   // Window creation
   sdl_window = SDL_CreateWindow(
@@ -50,6 +53,11 @@ GameWindow::GameWindow(const char *title, uint32_t width, uint32_t height) {
 
   int gladLoadSuccess = gladLoadGLLoader(SDL_GL_GetProcAddress);
   assert(gladLoadSuccess);
+
+  spdlog::info("OpenGL initializing successful!");
+  spdlog::info("VENDOR: {}", glGetString(GL_VENDOR));
+  spdlog::info("RENDERER: {}", glGetString(GL_RENDERER));
+  spdlog::info("Shader Version: {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
   // OpenGL options
   glEnable(GL_MULTISAMPLE);
