@@ -1,7 +1,3 @@
-//
-// Created by Trevor Fisher on 6/4/2021.
-//
-
 #include <cassert>
 #include "game_window.h"
 #include "glad/glad.h"
