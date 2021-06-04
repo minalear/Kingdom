@@ -1,6 +1,11 @@
 #include <iostream>
+#include "core/game_window.h"
 
+void test() {
+  auto window = GameWindow("Kingdom", 1280, 720);
+}
 int main() {
-  std::cout << "Hello, World!" << std::endl;
+  test();
+
   return 0;
 }

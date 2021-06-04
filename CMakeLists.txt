@@ -8,12 +8,12 @@ set(CMAKE_CXX_STANDARD 14)
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 # Libraries
-find_library(SDL2_LIB SDL2 PATHS "../lib/SDL2/lib/x64")
+find_library(SDL2_LIB SDL2 PATHS "../../lib/SDL2/lib/x64")
 
 # Include directories
-include_directories("../lib/SDL2/include")
-include_directories("../lib/glm/include")
-include_directories("../lib/glad/include")
+include_directories("../../lib/SDL2/include")
+include_directories("../../lib/glm/include")
+include_directories("../../lib/glad/include")
 
 add_executable(kingdom ${SOURCE_FILES})
 target_link_libraries(kingdom ${SDL2_LIB})
@@ -26,4 +26,4 @@ add_custom_command(TARGET kingdom POST_BUILD
 # Copy SDL2.dll to build path (Windows only)
 add_custom_command(TARGET kingdom POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "../lib/SDL2/lib/x64/SDL2.dll" $<TARGET_FILE_DIR:kingdom>)
+    "../../../lib/SDL2/lib/x64/SDL2.dll" $<TARGET_FILE_DIR:kingdom>)
