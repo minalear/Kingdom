@@ -1,0 +1,15 @@
+# IDE folders
+.idea/
+.vs/
+*.sln
+*.vcxproj*
+
+# Build stuff
+bin/
+obj/
+*.dll
+*.lib
+x64/
+cmake-build-debug/
+Makefile
+*.make
