@@ -1,6 +1,7 @@
 #include <iostream>
 #include "glad/glad.h"
 #include "core/game_window.h"
+#include "core/event.h"
 #include "graphics/sprite_batch.h"
 #include "graphics/texture_2d.h"
 #include "spdlog/spdlog.h"
@@ -36,6 +37,8 @@ int main() {
     spriteBatch.Draw(texture, pos);
     window.SwapBuffers();
   }
+
+  gEventHandler.Post(ApplicationCloseEvent());
 
   spdlog::info("Program execution finished.");
   return 0;
