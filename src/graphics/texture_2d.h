@@ -15,7 +15,7 @@ public:
 
   int Width() const;
   int Height() const;
-  int Bind() const;
+  void Bind() const;
 };
 
 #endif //KINGDOM_TEXTURE_2D_H

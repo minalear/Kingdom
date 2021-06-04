@@ -32,6 +32,6 @@ int Texture2D::Width() const {
 int Texture2D::Height() const {
   return height;
 }
-int Texture2D::Bind() const {
+void Texture2D::Bind() const {
   glBindTexture(GL_TEXTURE_2D, id);
 }
