@@ -18,6 +18,9 @@ public:
 
   uint32_t Width() const;
   uint32_t Height() const;
+  SDL_Window* Handle() const;
+  SDL_GLContext GLContext() const;
+
   float Dt();
   void SwapBuffers();
 };

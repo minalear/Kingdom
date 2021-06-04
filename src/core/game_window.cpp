@@ -10,7 +10,7 @@ GameWindow::GameWindow(const char *title, uint32_t width, uint32_t height) {
   SDL_SetMainReady();
 
   // Initialize SDL and create a window
-  SDL_Init(SDL_INIT_VIDEO);
+  assert(SDL_Init(SDL_INIT_VIDEO) == 0);
 
   spdlog::info("Initializing SDL and OpenGL (Core Profile, v4.0)");
   // Set SDL OpenGL attributes (core profile, opengl v4.0)
@@ -77,6 +77,14 @@ uint32_t GameWindow::Width() const {
 
 uint32_t GameWindow::Height() const {
   return window_height;
+}
+
+SDL_Window *GameWindow::Handle() const {
+  return sdl_window;
+}
+
+SDL_GLContext GameWindow::GLContext() const {
+  return gl_context;
 }
 
 /// Returns the time (in seconds) since the previous calling of dt()
