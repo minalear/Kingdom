@@ -1,7 +1,3 @@
-//
-// Created by Trevor Fisher on 6/4/2021.
-//
-
 #include <cstdio>
 #include "shader_program.h"
 #include "glad/glad.h"
