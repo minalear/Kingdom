@@ -6,7 +6,7 @@
 #include "graphics/texture_2d.h"
 #include "spdlog/spdlog.h"
 #include "entt/entt.hpp"
-
+#include "math/rng.h"
 #include "gui/imgui.h"
 #include "gui/imgui_impl_sdl.h"
 #include "gui/imgui_impl_opengl3.h"
@@ -15,6 +15,10 @@ struct Transform {
   glm::vec2 pos;
   glm::vec2 scale;
   float rotation;
+};
+
+struct Velocity {
+  glm::vec2 vel;
 };
 
 struct TextureData {
@@ -31,11 +35,16 @@ int main() {
   auto texture = Texture2D("content/textures/placeholder.png");
 
   entt::registry registry;
-  auto entity = registry.create();
-  registry.emplace<Transform>(entity, glm::vec2(0.f), glm::vec2(1.f), 0.f);
-  registry.emplace<TextureData>(entity, &texture);
 
-  auto view = registry.view<Transform, TextureData>();
+  for (int i = 0; i < 2500; i++) {
+    auto entity = registry.create();
+    registry.emplace<Transform>(entity, glm::vec2(0.f), glm::vec2(0.1f), 0.f);
+    registry.emplace<Velocity>(entity, glm::vec2(rng::next_int(-100, 100), rng::next_int(-100, 100)));
+    registry.emplace<TextureData>(entity, &texture);
+  }
+
+  auto renderView = registry.view<Transform, TextureData>();
+  auto physicsView = registry.view<Transform, Velocity>();
 
   // ImGui testing
   IMGUI_CHECKVERSION();
@@ -88,22 +97,33 @@ int main() {
     if (timer >= fixed_step) {
       timer -= fixed_step;
 
+      for (auto& entity : physicsView) {
+        auto& transform = physicsView.get<Transform>(entity);
+        auto& velocity = physicsView.get<Velocity>(entity);
 
+        transform.pos += velocity.vel * fixed_step;
+
+        if (transform.pos.x < 0.f || transform.pos.x > 1230.f) velocity.vel.x *= -1.f;
+        if (transform.pos.y < 0.f || transform.pos.y > 670.f) velocity.vel.y *= -1.f;
+      }
     }
 
     // Rendering logic
     ImGui::Render();
     glClear(GL_COLOR_BUFFER_BIT);
 
-    for (auto& entity : view) {
-      auto& transform = view.get<Transform>(entity);
-      auto& texture = view.get<TextureData>(entity).texture;
+    // Renderable entity rendering
+    spriteBatch.Begin(texture);
+    for (auto& entity : renderView) {
+      auto& transform = renderView.get<Transform>(entity);
+      auto& tData = renderView.get<TextureData>(entity).texture;
 
-      spriteBatch.Draw(*texture, transform.pos, transform.scale);
+      spriteBatch.Draw(*tData, transform.pos, transform.scale);
     }
+    spriteBatch.End();
 
+    // ImGui rendering
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
     window.SwapBuffers();
   }
 

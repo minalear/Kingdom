@@ -19,6 +19,9 @@ public:
 
   void Resize(const int bufferWidth, const int bufferHeight);
 
+  void Begin(const Texture2D& texture) const;
+  void End() const;
+
   void Draw(const Texture2D& texture, const glm::mat4& model);
   void Draw(const Texture2D& texture, const glm::vec2& pos);
   void Draw(const Texture2D& texture, const glm::vec2& pos, const glm::vec2& scale);

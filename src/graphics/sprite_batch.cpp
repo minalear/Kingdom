@@ -86,17 +86,21 @@ SpriteBatch::~SpriteBatch() {
 
 // Private methods
 void SpriteBatch::draw(const Texture2D &texture, const glm::mat4 &model) {
-  shaderProgram.Use();
   shaderProgram.SetUniform("model", model);
-
-  texture.Bind();
-  glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, 6);
-  glBindVertexArray(0);
 }
 
 // Public methods
 void SpriteBatch::Resize(const int bufferWidth, const int bufferHeight) { }
+
+void SpriteBatch::Begin(const Texture2D& texture) const {
+  shaderProgram.Use();
+  texture.Bind();
+  glBindVertexArray(vao);
+}
+void SpriteBatch::End() const {
+  glBindVertexArray(0);
+}
 
 void SpriteBatch::Draw(const Texture2D &texture, const glm::mat4 &model) {
   draw(texture, model);
