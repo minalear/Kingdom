@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 project(kingdom)
 
 # Compiler settings
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # Source Files
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -15,6 +15,7 @@ include_directories("../../lib/SDL2/include") # SDL2 headers
 include_directories("../../lib/glm/include")  # Math headers
 include_directories("../../lib/glad/include") # OpenGL bindings
 include_directories("../../lib/spdlog/include") # Logging library
+include_directories("../../lib/entt/single_include") # ECS System
 
 add_executable(kingdom ${SOURCE_FILES})
 target_link_libraries(kingdom ${SDL2_LIB})

@@ -3,10 +3,13 @@
 
 #include <functional>
 #include <vector>
+#include "SDL2/SDL_scancode.h"
 
 enum class EventType {
   ApplicationClose,
-  MouseMove
+  MouseMove,
+  KeyboardButtonUp,
+  KeyboardButtonDown
 };
 
 // Used for event filtering
@@ -38,6 +41,17 @@ struct MouseMoveEvent : Event {
 
   const char* ToString() const override {
     return "MouseMove";
+  }
+};
+struct KeyboardEvent : Event {
+  SDL_Scancode key;
+
+  KeyboardEvent(EventType eventType, SDL_Scancode key)
+      : Event(eventType, EVENT_OTHER),
+        key(key) { }
+
+  const char* ToString() const override {
+    return "KeyboardEvent";
   }
 };
 
