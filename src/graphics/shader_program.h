@@ -11,11 +11,14 @@ class ShaderProgram {
   int32_t GetUniformLocation(const char* name);
 
 public:
+  ShaderProgram();
   ShaderProgram(const char* vSource, const char* fSource);
   ~ShaderProgram();
 
   uint32_t Id() const;
   void Use() const;
+
+  void LoadShaderSources(const char* vSource, const char* fSource) const;
 
   void SetUniform(const char* name, bool value);
   void SetUniform(const char* name, const glm::vec2 &value);

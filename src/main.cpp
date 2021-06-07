@@ -37,21 +37,21 @@ int main() {
 
   entt::registry registry;
 
-  /*for (int i = 0; i < 500; i++) {
+  for (int i = 0; i < 500; i++) {
     auto entity = registry.create();
     registry.emplace<Transform>(entity, glm::vec2(0.f), glm::vec2(0.1f), 0.f);
     registry.emplace<Velocity>(entity, glm::vec2(rng::next_int(-100, 100), rng::next_int(-100, 100)));
     registry.emplace<TextureData>(entity, &texture);
-  }*/
+  }
 
-  auto world = registry.create();
+  /*auto world = registry.create();
   registry.emplace<WorldData>(world, 5, 5);
 
   auto& world_data = registry.get<WorldData>(world);
   for (int i = 0; i < world_data.width * world_data.height; i++) {
     world_data.tileData[i] = rng::next_int(0, 2);
     spdlog::info("{} = {}", i, world_data.tileData[i]);
-  }
+  }*/
 
   auto renderView = registry.view<Transform, TextureData>();
   auto physicsView = registry.view<Transform, Velocity>();

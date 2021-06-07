@@ -5,17 +5,16 @@
 #include "texture_2d.h"
 #include "shader_program.h"
 #include "glm/glm.hpp"
+#include "vertex_buffer.h"
 
 class SpriteBatch {
-  uint32_t vao;
-  uint32_t vbo;
   ShaderProgram shaderProgram;
+  VertexBuffer vertexBuffer;
 
   void draw(const Texture2D& texture, const glm::mat4& model);
 
 public:
   SpriteBatch(const int bufferWidth, const int bufferHeight);
-  ~SpriteBatch();
 
   void Resize(const int bufferWidth, const int bufferHeight);
 

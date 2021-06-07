@@ -28,34 +28,12 @@ bool checkShaderLinkStatus(uint32_t program_id) {
   return bool(linkStatus);
 }
 
+ShaderProgram::ShaderProgram() {
+  program_id = glCreateProgram();
+}
 ShaderProgram::ShaderProgram(const char *vSource, const char *fSource) {
   program_id = glCreateProgram();
-
-  // Vertex shader
-  uint32_t vShaderId = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vShaderId, 1, &vSource, nullptr);
-  glCompileShader(vShaderId);
-  assert(checkShaderCompilation(vShaderId));
-
-  // Fragment shader
-  uint32_t fShaderId = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fShaderId, 1, &fSource, nullptr);
-  glCompileShader(fShaderId);
-  assert(checkShaderCompilation(fShaderId));
-
-  // Attach shaders and link program
-  glAttachShader(program_id, vShaderId);
-  glAttachShader(program_id, fShaderId);
-  glLinkProgram(program_id);
-
-  // Check for linking errors
-  assert(checkShaderLinkStatus(program_id));
-
-  // Cleanup
-  glDetachShader(program_id, vShaderId);
-  glDetachShader(program_id, fShaderId);
-  glDeleteShader(vShaderId);
-  glDeleteShader(fShaderId);
+  LoadShaderSources(vSource, fSource);
 }
 ShaderProgram::~ShaderProgram() {
   glUseProgram(0);
@@ -81,6 +59,34 @@ uint32_t ShaderProgram::Id() const {
 }
 void ShaderProgram::Use() const {
   glUseProgram(program_id);
+}
+
+void ShaderProgram::LoadShaderSources(const char *vSource, const char *fSource) const {
+  // Vertex shader
+  uint32_t vShaderId = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vShaderId, 1, &vSource, nullptr);
+  glCompileShader(vShaderId);
+  assert(checkShaderCompilation(vShaderId));
+
+  // Fragment shader
+  uint32_t fShaderId = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fShaderId, 1, &fSource, nullptr);
+  glCompileShader(fShaderId);
+  assert(checkShaderCompilation(fShaderId));
+
+  // Attach shaders and link program
+  glAttachShader(program_id, vShaderId);
+  glAttachShader(program_id, fShaderId);
+  glLinkProgram(program_id);
+
+  // Check for linking errors
+  assert(checkShaderLinkStatus(program_id));
+
+  // Cleanup
+  glDetachShader(program_id, vShaderId);
+  glDetachShader(program_id, fShaderId);
+  glDeleteShader(vShaderId);
+  glDeleteShader(fShaderId);
 }
 
 void ShaderProgram::SetUniform(const char *name, bool value) {
