@@ -14,9 +14,9 @@ class SpriteBatch {
   void draw(const Texture2D& texture, const glm::mat4& model);
 
 public:
-  SpriteBatch(const int bufferWidth, const int bufferHeight);
+  SpriteBatch(int bufferWidth, int bufferHeight);
 
-  void Resize(const int bufferWidth, const int bufferHeight);
+  void Resize(int bufferWidth, int bufferHeight);
 
   void Begin(const Texture2D& texture) const;
   void End() const;

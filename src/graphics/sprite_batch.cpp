@@ -1,5 +1,4 @@
 #include "sprite_batch.h"
-#include "glad/glad.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "../content/file_handler.h"
 
