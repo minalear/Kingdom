@@ -14,6 +14,7 @@ public:
   explicit Perlin(uint32_t seed);
 
   float Noise(float x, float y, float z) const;
+  void SetNewSeed(uint32_t seed);
 };
 
 #endif //KINGDOM_PERLIN_H
