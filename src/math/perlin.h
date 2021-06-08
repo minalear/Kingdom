@@ -7,7 +7,6 @@ class Perlin {
   std::vector<int> p;
 
   static float fade(float t);
-  static float lerp(float t, float a, float b);
   static float grad(int hash, float x, float y, float z);
 
 public:

@@ -14,6 +14,8 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "math/perlin.h"
+#include "graphics/tile_sheet.h"
+#include "math/func.h"
 
 struct Transform {
   glm::vec2 pos;
@@ -48,6 +50,8 @@ int main() {
     registry.emplace<TextureData>(entity, &texture);
   }*/
 
+  TileSheet tilesheet("content/textures/tileset.png", 32);
+
   auto world = registry.create();
   registry.emplace<WorldData>(world, 160, 92);
 
@@ -76,35 +80,41 @@ int main() {
   for (int y = 0; y < world_data.height; y++) {
     for (int x = 0; x < world_data.width; x++) {
       const int tileIndex = world_data.tileData[y * world_data.width + x];
-      buffer[index++] = x * tileSize;
-      buffer[index++] = y * tileSize;
-      buffer[index++] = float(tileIndex) / 4.f;
-      buffer[index++] = 0.f;
+      const auto point = glm::vec2(
+        float(tileIndex % tilesheet.Width()) / tilesheet.Width(),
+        float(tileIndex / tilesheet.Width()) / tilesheet.Height()
+      );
+      const auto size = glm::vec2(1.f / tilesheet.Width(), 1.f / tilesheet.Height());
 
       buffer[index++] = x * tileSize;
-      buffer[index++] = y * tileSize + tileSize;
-      buffer[index++] = float(tileIndex) / 4.f;
-      buffer[index++] = 1.f;
-
-      buffer[index++] = x * tileSize + tileSize;
       buffer[index++] = y * tileSize;
-      buffer[index++] = float(tileIndex) / 4.f + (1.f / 4.f);
-      buffer[index++] = 0.f;
-
-      buffer[index++] = x * tileSize + tileSize;
-      buffer[index++] = y * tileSize;
-      buffer[index++] = float(tileIndex) / 4.f + (1.f / 4.f);
-      buffer[index++] = 0.f;
+      buffer[index++] = point.x;
+      buffer[index++] = point.y;
 
       buffer[index++] = x * tileSize;
       buffer[index++] = y * tileSize + tileSize;
-      buffer[index++] = float(tileIndex) / 4.f;
-      buffer[index++] = 1.f;
+      buffer[index++] = point.x;
+      buffer[index++] = point.y + size.y;
+
+      buffer[index++] = x * tileSize + tileSize;
+      buffer[index++] = y * tileSize;
+      buffer[index++] = point.x + size.x;
+      buffer[index++] = point.y;
+
+      buffer[index++] = x * tileSize + tileSize;
+      buffer[index++] = y * tileSize;
+      buffer[index++] = point.x + size.x;
+      buffer[index++] = point.y;
+
+      buffer[index++] = x * tileSize;
+      buffer[index++] = y * tileSize + tileSize;
+      buffer[index++] = point.x;
+      buffer[index++] = point.y + size.y;
 
       buffer[index++] = x * tileSize + tileSize;
       buffer[index++] = y * tileSize + tileSize;
-      buffer[index++] = float(tileIndex) / 4.f + (1.f / 4.f);
-      buffer[index++] = 1.f;
+      buffer[index++] = point.x + size.x;
+      buffer[index++] = point.y + size.y;
     }
   }
 
@@ -135,8 +145,7 @@ int main() {
   sProgram.SetUniform("proj", proj);
   sProgram.SetUniform("view", view);
   sProgram.SetUniform("model", model);
-
-  Texture2D tilesheet("content/textures/tileset.png");
+  sProgram.SetUniform("tint", glm::vec3(1.f));
 
   auto renderView = registry.view<Transform, TextureData>();
   auto physicsView = registry.view<Transform, Velocity>();
@@ -154,6 +163,11 @@ int main() {
 
   // fixed step logic
   float timer = window.Dt();
+  float dayTimer = 0.f;
+  auto tint = glm::vec3(1.f);
+
+  const glm::vec3 nightColor = glm::vec3(47.f, 43.f, 94.f) / glm::vec3(255.f);
+
   const float fixed_step = 0.01667f; // 1/60th of a second
 
   bool demo_window = false;
@@ -161,6 +175,7 @@ int main() {
 
   SDL_Event sdlEvent;
   while (true) {
+    // Event Handling
     if (SDL_PollEvent(&sdlEvent)) {
       ImGui_ImplSDL2_ProcessEvent(&sdlEvent);
       if (sdlEvent.type == SDL_QUIT) break;
@@ -176,21 +191,25 @@ int main() {
       }
     }
 
-    // ImGui testing
-    /*ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame(window.Handle());
-    ImGui::NewFrame();*/
-
-    /*ImGui::Begin("Hello, world!");
-    ImGui::Text("This is some useful text.");
-    ImGui::Checkbox("Demo Window", &demo_window);
-    ImGui::Checkbox("Another Window", &another_window);
-    ImGui::End();*/
-
     // Update logic
     timer += window.Dt();
     if (timer >= fixed_step) {
       timer -= fixed_step;
+      //dayTimer += fixed_step;
+
+      /*const float dayLength = 5.f;
+      if (dayTimer >= dayLength * 2.f) dayTimer = 0.f;
+      if (dayTimer >= 0.f && dayTimer <= dayLength) {
+        tint.r = lerp(1.f, nightColor.r, dayTimer / dayLength);
+        tint.g = lerp(1.f, nightColor.g, dayTimer / dayLength);
+        tint.b = lerp(1.f, nightColor.b, dayTimer / dayLength);
+      } else {
+        tint.r = lerp(nightColor.r, 1.f, (dayTimer - dayLength) / dayLength);
+        tint.g = lerp(nightColor.g, 1.f, (dayTimer - dayLength) / dayLength);
+        tint.b = lerp(nightColor.b, 1.f, (dayTimer - dayLength) / dayLength);
+      }*/
+
+      sProgram.SetUniform("tint", tint);
 
       /*for (auto& entity : physicsView) {
         auto& transform = physicsView.get<Transform>(entity);
@@ -204,7 +223,22 @@ int main() {
     }
 
     // Rendering logic
-    //ImGui::Render();
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame(window.Handle());
+    ImGui::NewFrame();
+
+    ImGui::Begin("Hello, world!");
+    ImGui::Text("This is some useful text.");
+    ImGui::Checkbox("Demo Window", &demo_window);
+    ImGui::Checkbox("Another Window", &another_window);
+    ImGui::DragFloat("Time", &dayTimer, 0.f, 10.f);
+    ImGui::DragFloat("R", &tint.r, 0.f, 1.f);
+    ImGui::DragFloat("G", &tint.g, 0.f, 1.f);
+    ImGui::DragFloat("B", &tint.b, 0.f, 1.f);
+    ImGui::End();
+
+    ImGui::Render();
+
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Renderable entity rendering
@@ -217,13 +251,13 @@ int main() {
     }
     spriteBatch.End();*/
 
-    // ImGui rendering
-    //ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
     vBuffer.Bind();
     tilesheet.Bind();
     glDrawArrays(GL_TRIANGLES, 0, world_data.width * world_data.height * 6);
     vBuffer.Unbind();
+
+    // ImGui rendering
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     window.SwapBuffers();
   }

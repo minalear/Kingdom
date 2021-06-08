@@ -3,6 +3,7 @@
 #include <random>
 #include <algorithm>
 #include <numeric>
+#include "func.h"
 
 Perlin::Perlin() {
   // initalize permutation vector
@@ -36,9 +37,6 @@ Perlin::Perlin(uint32_t seed) {
 
 float Perlin::fade(float t) {
   return t * t * t * (t * (t * 6 - 15) + 10);
-}
-float Perlin::lerp(float t, float a, float b) {
-  return a + t * (b - a);
 }
 float Perlin::grad(int hash, float x, float y, float z) {
   int h = hash & 15;
