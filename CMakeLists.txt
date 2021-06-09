@@ -16,6 +16,7 @@ include_directories("../../lib/glm/include")  # Math headers
 include_directories("../../lib/glad/include") # OpenGL bindings
 include_directories("../../lib/spdlog/include") # Logging library
 include_directories("../../lib/entt/single_include") # ECS System
+include_directories("../../lib/toml11/include") # TOML file reading
 
 add_executable(kingdom ${SOURCE_FILES})
 target_link_libraries(kingdom ${SDL2_LIB})

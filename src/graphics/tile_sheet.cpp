@@ -4,7 +4,9 @@
 #include "spdlog/spdlog.h"
 
 
-TileSheet::TileSheet(const char *path, int tileSize) : tileSize(tileSize) {
+TileSheet::TileSheet(const char *path, int tileSize)
+    : tileSize(tileSize)
+{
   auto data = stbi_load(path, &textureWidth, &textureHeight, nullptr, STBI_rgb_alpha);
 
   width = textureWidth / tileSize;

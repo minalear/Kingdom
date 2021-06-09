@@ -1,37 +1,22 @@
 #ifndef KINGDOM_WORLDDATA_H
 #define KINGDOM_WORLDDATA_H
 
+#include <vector>
+
 struct WorldData {
   int width;
   int height;
 
-  int* tileData;
+  std::vector<int> tileData;
 
-  WorldData(int width, int height) : width(width), height(height) {
-    tileData = new int[width * height];
-  }
-  ~WorldData() {
-    delete[] tileData;
-  }
+  WorldData(int width, int height);
 
-  int GetTileIndex(int index) const {
-    if (index < 0 || index >= width * height) return 0;
-    return tileData[index];
-  }
-  int GetTileIndex(int x, int y) const {
-    if (x < 0 || x >= width || y < 0 || y >= width) return 0;
-    return tileData[x + y * width];
-  }
+  int GetTileIndex(int index) const;
+  int GetTileIndex(int x, int y) const;
+  void SetTileIndex(int index, int tile);
+  void SetTileIndex(int x, int y, int tile);
 
-  void SetTileIndex(int index, int tile) {
-    if (index < 0 || index >= width * height) return;
-    tileData[index] = tile;
-  }
-
-  void SetTileIndex(int x, int y, int tile) {
-    if (x < 0 || x >= width || y < 0 || y >= width) return;
-    tileData[x + y * width] = tile;
-  }
+  uint8_t CalculateTileBitmask(int index) const;
 };
 
 #endif //KINGDOM_WORLDDATA_H

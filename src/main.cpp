@@ -16,20 +16,15 @@
 #include "graphics/shader_program.h"
 #include "graphics/vertex_buffer.h"
 #include "game/world_data.h"
+#include "game/world_generator.h"
 #include "graphics/tile_sheet.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "toml.hpp"
 
-const int mapWidth = 128;
-const int mapHeight = 72;
 
-auto islandData = new float[mapWidth * mapHeight];
 
-float distance(float x1, float y1, float x2, float y2) {
-  return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-}
-
-void generateTextureData(const Texture2D& image) {
+/*void generateTextureData(const Texture2D& image) {
   auto newData = new uint8_t[mapWidth * mapHeight * 4]; // 4 bytes per pixel
 
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
@@ -42,67 +37,21 @@ void generateTextureData(const Texture2D& image) {
 
   image.SetTextureData(newData);
   delete[] newData;
-}
-
-void generateIsland(const Perlin& perlin, const Texture2D& image) {
-  // reset map to zero
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    islandData[i] = 0;
-  }
-
-  // create basic circle
-  const int cx = mapWidth / 2;
-  const int cy = mapHeight / 2;
-  const float maxDistance = distance(0, 0, cx, cy);
-
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const int x = i % mapWidth;
-    const int y = i / mapWidth;
-
-    float value = 1.f - (distance(x, y, cx, cy) / maxDistance);
-    if (value <= 0.45f) value = 0.f;
-
-    islandData[i] = value;
-  }
-
-  // layer noise to create randomness
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const int x = i % mapWidth;
-    const int y = i / mapWidth;
-
-    // perlin layers
-    float xf = float(x) / float(mapWidth);
-    float yf = float(y) / float(mapHeight);
-
-    float n1 = islandData[i];
-    float n2 = perlin.Noise(xf, yf, 0.f);
-    float n3 = perlin.Noise(5.f * xf, 5.f * yf, 0.f);
-    float n4 = perlin.Noise(10.f * xf, 10.f * yf, 0.f);
-
-    float value = n1 * (n2 + n3 + n4) / 3.f;
-    if (value <= 0.3f) value = 0.f;
-    islandData[i] = value;
-  }
-
-  generateTextureData(image);
-}
+}*/
 
 int main() {
   spdlog::info("Initializing game...");
+  
   const int viewport_width = 1280;
   const int viewport_height = 720;
 
-  auto window = GameWindow("Kingdom", viewport_width, viewport_height);
+  const int mapWidth = 128;
+  const int mapHeight = 72;
 
-  // fixed step logic
-  float timer = window.Dt();
-  const float fixed_step = 0.01667f; // 1/60th of a second
+  auto window = GameWindow("Kingdom", viewport_width, viewport_height);
 
   // Perlin noise generator and texture
   Perlin perlin(time(nullptr));
-
-  auto perlinImage = Texture2D(mapWidth, mapHeight);
-  generateIsland(perlin, perlinImage);
 
   // SpriteBatch is used to render our image to screen
   SpriteBatch sb(viewport_width, viewport_height);
@@ -115,70 +64,29 @@ int main() {
   auto& worldData = registry.get<WorldData>(world);
 
   // Initial landmass setup
+  auto heightmap = GenerateHeightmap(time(nullptr), mapWidth, mapHeight);
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    worldData.tileData[i] = (islandData[i] == 0.f) ? 0 : 1;
+    worldData.tileData[i] = (heightmap[i] == 0.f) ? 0 : 1;
   }
 
-  // Coordinate bitmasks
-  uint8_t NW = 0b00000001;
-  uint8_t  N = 0b00000010;
-  uint8_t NE = 0b00000100;
-  uint8_t  W = 0b00001000;
-  uint8_t  E = 0b00010000;
-  uint8_t SW = 0b00100000;
-  uint8_t  S = 0b01000000;
-  uint8_t SE = 0b10000000;
+  // TOML testing
+  auto tilesetData = toml::parse("content/data/tileset.data");
+  auto metaData = toml::find(tilesetData, "meta");
+  spdlog::info("Tileset Loading: path {}", toml::find<std::string>(metaData, "path"));
 
-  // map for landmass border
+  auto autotileData = toml::find(tilesetData, "autotile");
+  auto bitmaskData = toml::find<toml::array>(autotileData, "bitmasks");
+
+  // load bitmask data from toml file
   std::map<uint8_t, int> tilesetIndices;
-  tilesetIndices.insert(std::pair(0b00000000, 12)); // all water
-  tilesetIndices.insert(std::pair(0b11111111, 1)); // all land
-  tilesetIndices.insert(std::pair(N, 2));
-  tilesetIndices.insert(std::pair(S, 3));
-  tilesetIndices.insert(std::pair(E, 4));
-  tilesetIndices.insert(std::pair(W, 5));
-  tilesetIndices.insert(std::pair(E | S | SE, 6));
-  tilesetIndices.insert(std::pair(W | S | SW, 7));
-  tilesetIndices.insert(std::pair(N | E | NE, 18));
-  tilesetIndices.insert(std::pair(W | N | NW, 19));
-  tilesetIndices.insert(std::pair(N | E | S | NE | SE, 13));
-  tilesetIndices.insert(std::pair(N | W | S | NW | SW, 14));
-  tilesetIndices.insert(std::pair(W | N | E | NW | NE, 15));
-  tilesetIndices.insert(std::pair(W | S | E | SW | SE, 16));
-  tilesetIndices.insert(std::pair(N | S | E | W, 17));
-  tilesetIndices.insert(std::pair(W | E | S, 24));
-  tilesetIndices.insert(std::pair(W | E | N, 25));
-  tilesetIndices.insert(std::pair(W | N | S, 26));
-  tilesetIndices.insert(std::pair(E | N | S, 27));
-  tilesetIndices.insert(std::pair(N | S | E | W | NE | SW, 28));
-  tilesetIndices.insert(std::pair(N | S | E | W | NW | SE, 29));
-  tilesetIndices.insert(std::pair(N | S, 30));
-  tilesetIndices.insert(std::pair(E | W, 31));
-  tilesetIndices.insert(std::pair(E | S, 36));
-  tilesetIndices.insert(std::pair(W | S, 37));
-  tilesetIndices.insert(std::pair(N | E, 48));
-  tilesetIndices.insert(std::pair(N | W, 49));
-  tilesetIndices.insert(std::pair(N | S | E | W | SW | SE | NE, 38));
-  tilesetIndices.insert(std::pair(N | S | E | W | NW | SW | SE, 39));
-  tilesetIndices.insert(std::pair(N | S | E | W | NW | NE | SE, 50));
-  tilesetIndices.insert(std::pair(N | S | E | W | NW | NE | SW, 51));
-  tilesetIndices.insert(std::pair(N | S | E | SE, 40));
-  tilesetIndices.insert(std::pair(N | S | E | NE, 41));
-  tilesetIndices.insert(std::pair(N | S | W | SW, 42));
-  tilesetIndices.insert(std::pair(N | S | W | NW, 43));
-  tilesetIndices.insert(std::pair(N | E | W | NW, 52));
-  tilesetIndices.insert(std::pair(N | E | W | NE, 53));
-  tilesetIndices.insert(std::pair(E | W | S | SW, 54));
-  tilesetIndices.insert(std::pair(E | W | S | SE, 55));
-  tilesetIndices.insert(std::pair(N | S | E | W | SE, 60));
-  tilesetIndices.insert(std::pair(N | S | E | W | SW, 61));
-  tilesetIndices.insert(std::pair(N | S | E | W | NE, 62));
-  tilesetIndices.insert(std::pair(N | S | E | W | NW, 63));
-  tilesetIndices.insert(std::pair(N | S | E | W | NE | NW, 64));
-  tilesetIndices.insert(std::pair(N | S | E | W | SE | SW, 65));
-  tilesetIndices.insert(std::pair(N | S | E | W | NE | SE, 66));
-  tilesetIndices.insert(std::pair(N | S | E | W | NW | SW, 67));
-  const int errorTile = 8;
+  for (auto& i : bitmaskData) {
+    const auto bitmask = uint8_t(toml::get<int>(i[0]));
+    const auto tileIndex = int(toml::get<int>(i[1]));
+
+    tilesetIndices.insert(std::pair(bitmask, tileIndex));
+  }
+
+  const int waterTile = 0;
   const int mountainTile = 9;
   const int forestTile = 10;
   const int treeTile = 22;
@@ -188,40 +96,9 @@ int main() {
 
   // Landmass border generation
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const int tileIndex = worldData.GetTileIndex(i);
-    if (tileIndex == 0) continue; // ignore water
-
-    // get coordinates
-    const int x = i % mapWidth;
-    const int y = i / mapWidth;
-
-    // calculate bitmask for tile's neighbors
-    const int nw = worldData.GetTileIndex(x - 1, y - 1) == 0 ? 0 : 1;
-    const int  n = worldData.GetTileIndex(x, y - 1) == 0 ? 0 : 1;
-    const int ne = worldData.GetTileIndex(x + 1, y - 1) == 0 ? 0 : 1;
-    const int  w = worldData.GetTileIndex(x - 1, y) == 0 ? 0 : 1;
-    const int  e = worldData.GetTileIndex(x + 1, y) == 0 ? 0 : 1;
-    const int sw = worldData.GetTileIndex(x - 1, y + 1) == 0 ? 0 : 1;
-    const int  s = worldData.GetTileIndex(x, y + 1) == 0 ? 0 : 1;
-    const int se = worldData.GetTileIndex(x + 1, y + 1) == 0 ? 0 : 1;
-
-    uint8_t bitmask = 0x00;
-    if (n && w) bitmask +=   1 * nw;
-                bitmask +=   2 * n;
-    if (n && e) bitmask +=   4 * ne;
-                bitmask +=   8 * w;
-                bitmask +=  16 * e;
-    if (s && w) bitmask +=  32 * sw;
-                bitmask +=  64 * s;
-    if (s && e) bitmask += 128 * se;
-
-    //spdlog::info("tile {} - bitmask {:b}", i, bitmask);
-
-    if (tilesetIndices.find(bitmask) == tilesetIndices.end()) {
-      worldData.SetTileIndex(i, errorTile);
-    } else {
-      worldData.SetTileIndex(i, tilesetIndices[bitmask]);
-    }
+    if (worldData.GetTileIndex(i) == waterTile) continue; // ignore water
+    const uint8_t bitmask = worldData.CalculateTileBitmask(i);
+    worldData.SetTileIndex(i, tilesetIndices[bitmask]);
   }
 
   // Tree, Mountain, and Rock Generation
@@ -265,8 +142,8 @@ int main() {
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
     const auto tileIndex = worldData.GetTileIndex(i);
     const auto point = glm::vec2(
-  float(tileIndex % tilesheet.Width()) / tilesheet.Width(),
-  float(tileIndex / tilesheet.Width()) / tilesheet.Height()
+      float(tileIndex % tilesheet.Width()) / tilesheet.Width(),
+      float(tileIndex / tilesheet.Width()) / tilesheet.Height()
     );
     const size_t x = i % mapWidth;
     const size_t y = i / mapWidth;
@@ -312,14 +189,17 @@ int main() {
   vBuffer.VertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (GLvoid*)(2 * sizeof(float)));
   vBuffer.Unbind();
 
+  delete[] buffer;
+
   auto shaderProgram = ShaderProgram(
       ReadTextFile("content/shaders/texturedVS.glsl"),
       ReadTextFile("content/shaders/texturedFS.glsl")
   );
 
+  const float zoom = 1.f;
   glm::mat4 proj, view, model;
   proj = glm::ortho(0.f, float(window.Width()), float(window.Height()), 0.f, -1.f, 1.f);
-  view = glm::scale(glm::mat4(1.f), glm::vec3(0.5f));
+  view = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
   model = glm::mat4(1.f);
 
   shaderProgram.Use();
@@ -341,6 +221,10 @@ int main() {
   auto cameraPos = glm::vec2(0.f);
   auto oldPos = glm::vec2(0.f);
   auto newPos = glm::vec2(0.f);
+
+  // fixed step logic
+  float timer = window.Dt();
+  const float fixed_step = 0.01667f; // 1/60th of a second
 
   SDL_Event sdlEvent;
   while (true) {
@@ -372,7 +256,7 @@ int main() {
 
           cameraPos += newPos - oldPos;
 
-          auto camera = glm::scale(glm::mat4(1.f), glm::vec3(0.5f));
+          auto camera = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
           camera = glm::translate(camera, glm::vec3(cameraPos, 0.f));
           shaderProgram.Use();
           shaderProgram.SetUniform("view", camera);
@@ -394,12 +278,12 @@ int main() {
     ImGui::NewFrame();
 
     ImGui::Begin("Perlin Generator");
-    if (ImGui::Button("Generate"))
+    /*if (ImGui::Button("Generate"))
       generateIsland(perlin, perlinImage);
     if (ImGui::Button("New Seed")) {
       perlin.SetNewSeed(time(nullptr));
       generateIsland(perlin, perlinImage);
-    }
+    }*/
     ImGui::End();
 
     ImGui::Render();
