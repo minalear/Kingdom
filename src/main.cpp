@@ -21,56 +21,51 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "toml.hpp"
-
-
+#include "content/tinyxml2.h"
 
 /*void generateTextureData(const Texture2D& image) {
-  auto newData = new uint8_t[mapWidth * mapHeight * 4]; // 4 bytes per pixel
+  auto heightmap = GenerateHeightmap(time(nullptr), mapWidth, mapHeight);
+  auto imageData = new uint8_t[mapWidth * mapHeight * 4];
 
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    auto value = uint8_t(255 * islandData[i]);
-    newData[i * 4 + 0] = value;
-    newData[i * 4 + 1] = value;
-    newData[i * 4 + 2] = value;
-    newData[i * 4 + 3] = value;
-  }
+    const float height = heightmap[i];
+    const uint8_t stepHeight =
+        (height <= waterLevel) ? 0 :
+        (height <= mountainLevel) ? 1 : 2;
 
-  image.SetTextureData(newData);
-  delete[] newData;
+    auto value = 100 * stepHeight;
+    imageData[i * 4 + 0] = value;
+    imageData[i * 4 + 1] = value;
+    imageData[i * 4 + 2] = value;
+    imageData[i * 4 + 3] = 255;
+  }
+  image.SetTextureData(imageData);
+  delete[] imageData;
 }*/
 
 int main() {
   spdlog::info("Initializing game...");
-  
+
   const int viewport_width = 1280;
   const int viewport_height = 720;
 
-  const int mapWidth = 128;
-  const int mapHeight = 72;
-
   auto window = GameWindow("Kingdom", viewport_width, viewport_height);
 
-  // Perlin noise generator and texture
-  Perlin perlin(time(nullptr));
+  // XML parsing test
+  /*tinyxml2::XMLDocument doc;
+  doc.LoadFile("content/data/tileset.tsx");
 
-  // SpriteBatch is used to render our image to screen
-  SpriteBatch sb(viewport_width, viewport_height);
+  auto* tilesetNode = doc.FirstChildElement("tileset");
+  int tilewidth = tilesetNode->IntAttribute("tilewidth");
+  int tileheight = tilesetNode->IntAttribute("tileheight");
+  int tilecount = tilesetNode->IntAttribute("tilecount");
+  int tilecolumns = tilesetNode->IntAttribute("columns");
 
-  // world entity and tile data setup
-  entt::registry registry;
-  auto world = registry.create();
-  registry.emplace<WorldData>(world, mapWidth, mapHeight);
-
-  auto& worldData = registry.get<WorldData>(world);
-
-  // Initial landmass setup
-  auto heightmap = GenerateHeightmap(time(nullptr), mapWidth, mapHeight);
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    worldData.tileData[i] = (heightmap[i] == 0.f) ? 0 : 1;
-  }
+  spdlog::info("width: {}, height: {}, count: {}, columns: {}",
+               tilewidth, tileheight, tilecount, tilecolumns);*/
 
   // TOML testing
-  auto tilesetData = toml::parse("content/data/tileset.data");
+  /*auto tilesetData = toml::parse("content/data/tileset.data");
   auto metaData = toml::find(tilesetData, "meta");
   spdlog::info("Tileset Loading: path {}", toml::find<std::string>(metaData, "path"));
 
@@ -84,9 +79,48 @@ int main() {
     const auto tileIndex = int(toml::get<int>(i[1]));
 
     tilesetIndices.insert(std::pair(bitmask, tileIndex));
+  }*/
+
+  // Generate map
+  const int mapWidth = 256;
+  const int mapHeight = 144;
+
+  float seaLevel = 0.4f;
+  float mountainLevel = 0.6f;
+
+  auto heightmap = GenerateHeightmap(time(nullptr), mapWidth, mapHeight);
+  for (auto& value : heightmap) {
+    value = (value <= seaLevel) ? 0.f :
+            (value <= mountainLevel) ? 1.f : 2.f;
   }
 
-  const int waterTile = 0;
+  // Feature generation
+  Perlin perlin(100);
+
+  entt::registry registry;
+  auto world = registry.create();
+  registry.emplace<WorldData>(world, mapWidth, mapHeight);
+
+  auto& worldData = registry.get<WorldData>(world);
+
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    const float height = heightmap[i];
+
+    const int x = i % mapWidth;
+    const int y = i / mapWidth;
+    const float xf = float(x) / float(mapWidth);
+    const float yf = float(y) / float(mapHeight);
+
+    if (height == 0.f) worldData.SetTileIndex(i, 801);
+    if (height == 1.f) {
+      const float sample = perlin.Noise(0.5f * xf, 0.5f * yf, 0.f);
+      const int id = (sample >= 0.75f) ? 326 : 81;
+      worldData.SetTileIndex(i, id);
+    }
+    if (height == 2.f) worldData.SetTileIndex(i, 132);
+  }
+
+  /*const int waterTile = 0;
   const int mountainTile = 9;
   const int forestTile = 10;
   const int treeTile = 22;
@@ -131,12 +165,12 @@ int main() {
     }
 
     worldData.SetTileIndex(i, newIndex);
-  }
+  }*/
 
   // world rendering setup
-  auto tilesheet = TileSheet("content/textures/tileset.png", 32);
+  auto tilesheet = TileSheet("content/textures/tileset.png", 16);
   auto* buffer = new float[worldData.width * worldData.height * 24];
-  const float tileSize = 32.f;
+  const auto tileSize = float(tilesheet.TileSize());
   const auto size = glm::vec2(1.f / tilesheet.Width(), 1.f / tilesheet.Height());
 
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
@@ -196,7 +230,7 @@ int main() {
       ReadTextFile("content/shaders/texturedFS.glsl")
   );
 
-  const float zoom = 1.f;
+  const float zoom = 0.5f;
   glm::mat4 proj, view, model;
   proj = glm::ortho(0.f, float(window.Width()), float(window.Height()), 0.f, -1.f, 1.f);
   view = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
@@ -278,26 +312,21 @@ int main() {
     ImGui::NewFrame();
 
     ImGui::Begin("Perlin Generator");
-    /*if (ImGui::Button("Generate"))
-      generateIsland(perlin, perlinImage);
-    if (ImGui::Button("New Seed")) {
-      perlin.SetNewSeed(time(nullptr));
-      generateIsland(perlin, perlinImage);
-    }*/
+    /*ImGui::SliderFloat("Sea level", &waterLevel, 0.0f, 1.f);
+    ImGui::SliderFloat("Mountain level", &mountainLevel, 0.0f, 1.f);
+    if (ImGui::Button("Generate"))
+      generateNewHeightmap(heightmapImage);*/
     ImGui::End();
 
     ImGui::Render();
     glClear(GL_COLOR_BUFFER_BIT);
-    /*sb.Begin(perlinImage);
-    sb.Draw(perlinImage, glm::vec2(0.f), glm::vec2(8.f));
-    sb.End();*/
 
     vBuffer.Bind();
     tilesheet.Bind();
     glDrawArrays(GL_TRIANGLES, 0, mapWidth * mapHeight * 6);
     vBuffer.Unbind();
 
-    //ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     window.SwapBuffers();
   }
