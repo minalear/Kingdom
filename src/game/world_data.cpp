@@ -4,7 +4,7 @@ WorldData::WorldData(int width, int height, int depth)
   : width(width), height(height), depth(depth), tileData(width * height * depth, -1) { }
 
 int WorldData::GetTileIndex(int index) const {
-  if (index <= 0 || index >= width * height * depth) return -1;
+  if (index < 0 || index >= width * height * depth) return -1;
   return tileData[index];
 }
 int WorldData::GetTileIndex(int x, int y, int z) const {

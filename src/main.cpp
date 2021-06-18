@@ -44,6 +44,62 @@
   delete[] imageData;
 }*/
 
+template <typename T>
+bool validBlock(const std::vector<T>& vec, size_t i0, T value, int width, int height) {
+  const int x = i0 % width;
+  const int y = i0 / height;
+
+  // get indices of the 2x2 block
+  const size_t i1 = i0 + 1;
+  const size_t i2 = i0 + width;
+  const size_t i3 = i2 + 1;
+
+  const size_t len = vec.size();
+  if (i0 >= len || i1 >= len || i2 >= len || i3 >= len) return false;
+  if (i0 < 0 || i1 <= 0 || i2 <= 0 || i3 <= 0) return false;
+
+  return (vec[i0] == value && vec[i1] == value && vec[i2] == value && vec[i3] == value);
+}
+
+template <typename T>
+void setBlock(std::vector<T>& vec, size_t i0, T value, int width, int height) {
+  const int x = i0 % width;
+  const int y = i0 / height;
+
+  // get indices of the 2x2 block
+  const size_t i1 = i0 + 1;
+  const size_t i2 = i0 + width;
+  const size_t i3 = i2 + 1;
+
+  vec[i0] = vec[i1] = vec[i2] = vec[i3] = value;
+}
+
+template <typename T>
+T getValueByCoord(const std::vector<T>& vec, int x, int y, int width) {
+  const size_t index = x + y * width;
+  if (index < 0 || index >= vec.size()) return -1;
+  return vec[index];
+}
+
+template <typename T>
+uint8_t calculateBitmask(const std::vector<T>& vec, size_t i, int width) {
+  const int x = i % width;
+  const int y = i / width;
+
+  uint8_t bitmask = 0x00;
+  const int n = getValueByCoord(vec, x, y - 1, width);
+  const int e = getValueByCoord(vec, x + 1, y, width);
+  const int s = getValueByCoord(vec, x, y + 1, width);
+  const int w = getValueByCoord(vec, x - 1, y, width);
+
+  bitmask += 1 * n;
+  bitmask += 2 * e;
+  bitmask += 4 * s;
+  bitmask += 8 * w;
+
+  return bitmask;
+}
+
 int main() {
   spdlog::info("Initializing game...");
 
@@ -104,20 +160,43 @@ int main() {
   const int forestFeature = 2;
   const int mountainFeature = 3;
 
-  auto featureMap = std::vector<int>(mapWidth * mapHeight);
+  // initialize all features to water
+  auto featureMap = std::vector<int>(mapWidth * mapHeight, waterFeature);
+
+  // Place land and mountain features
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
     const float height = heightmap[i];
-    const int x = i % mapWidth;
-    const int y = i / mapWidth;
-    const float xf = float(x) / float(mapWidth);
-    const float yf = float(y) / float(mapHeight);
 
-    if (height == 0.f) featureMap[i] = waterFeature;
-    if (height == 1.f) {
-      const float sample = perlin.Noise(30.f * xf, 30.f * yf, 0.f);
-      featureMap[i] = (sample >= 0.58f) ? forestFeature : landFeature;
+    // place land and mountains in 2x2 blocks
+    if (validBlock(heightmap, i, 2.f, mapWidth, mapHeight)) {
+      setBlock(featureMap, i, mountainFeature, mapWidth, mapHeight);
+    } else if (validBlock(heightmap, i, 1.f, mapWidth, mapHeight)) {
+      setBlock(featureMap, i, landFeature, mapWidth, mapHeight);
     }
-    if (height == 2.f) featureMap[i] = mountainFeature;
+  }
+
+  // Map out forests into 2x2 blocks - skip every other y index
+  for (size_t y = 0; y < mapHeight; y += 2) {
+    for (size_t x = 0; x < mapWidth; x++) {
+      const size_t index = x + y * mapWidth;
+      if (!validBlock(featureMap, index, landFeature, mapWidth, mapHeight)) {
+        continue;
+      }
+
+      const float xf0 = 10.f * (float(x) / float(mapWidth));
+      const float yf0 = 10.f * (float(y) / float(mapWidth));
+      const float xf1 = 10.f * (float(x + 1) / float(mapWidth));
+      const float yf1 = 10.f * (float(y + 1) / float(mapWidth));
+
+      const float s0 = perlin.Noise(xf0, yf0, 0.f);
+      const float s1 = perlin.Noise(xf1, yf0, 0.f);
+      const float s2 = perlin.Noise(xf0, yf1, 0.f);
+      const float s3 = perlin.Noise(xf1, yf1, 0.f);
+
+      if ((s0 + s1 + s2 + s3) / 4.f >= 0.6f) {
+        setBlock(featureMap, index, forestFeature, mapWidth, mapHeight);
+      }
+    }
   }
 
   // Tile map creation from feature map
@@ -127,24 +206,31 @@ int main() {
 
   auto& worldData = registry.get<WorldData>(world);
 
-  /*for (size_t i = 0; i < mapWidth * mapHeight * mapDepth; i++) {
-    // convert i to localized index (ignoring depth)
-    const size_t localIndex = i % (mapWidth * mapHeight);
-
-    // calculate coordinates and get height for the coordinate
-    const float height = heightmap[localIndex];
-    const int x = localIndex % mapWidth;
-    const int y = localIndex / mapWidth;
-    const int z = i / (mapWidth * mapHeight);
-
-
-  }*/
-
-  const int noTile = -1;
   const int waterTile = 801;
   const int grassTile = 81;
   const int forestTile = 326;
   const int mountainTile = 258;
+
+  const uint8_t N = 0b0001;
+  const uint8_t E = 0b0010;
+  const uint8_t S = 0b0100;
+  const uint8_t W = 0b1000;
+
+  std::map<uint8_t, int> landsetMap;
+  landsetMap.insert(std::pair(0, 258));
+  landsetMap.insert(std::pair(N, 0));
+  landsetMap.insert(std::pair(E, 0));
+  landsetMap.insert(std::pair(S, 0));
+  landsetMap.insert(std::pair(W, 0));
+  landsetMap.insert(std::pair(N | E, 0));
+  landsetMap.insert(std::pair(N | W, 0));
+  landsetMap.insert(std::pair(N | W, 0));
+  landsetMap.insert(std::pair(N, 0));
+  landsetMap.insert(std::pair(N, 0));
+  landsetMap.insert(std::pair(N, 0));
+  landsetMap.insert(std::pair(N, 0));
+  landsetMap.insert(std::pair(N, 0));
+  landsetMap.insert(std::pair(N | S | E | W, 1));
 
   // for setting tiles, assign the full depth at once based on the feature
   size_t validTileCount = 0;
@@ -170,55 +256,6 @@ int main() {
       spdlog::critical("Invalid feature number ({}, {})", x, y);
     }
   }
-
-  spdlog::info("Valid Tiles: {}", validTileCount);
-
-  /*const int waterTile = 0;
-  const int mountainTile = 9;
-  const int forestTile = 10;
-  const int treeTile = 22;
-  const int rockTile = 11;
-  const int wheatTile = 20;
-  const int waterRockTile = 44;
-
-  // Landmass border generation
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    if (worldData.GetTileIndex(i) == waterTile) continue; // ignore water
-    const uint8_t bitmask = worldData.CalculateTileBitmask(i);
-    worldData.SetTileIndex(i, tilesetIndices[bitmask]);
-  }
-
-  // Tree, Mountain, and Rock Generation
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const auto tileIndex = worldData.GetTileIndex(i);
-
-    const int x = i % mapWidth;
-    const int y = i / mapWidth;
-    const float xf = float(x) / float(mapWidth);
-    const float yf = float(y) / float(mapHeight);
-
-    int newIndex = tileIndex;
-
-    if (tileIndex == 1) {
-      // land features
-      const float mountainSample = perlin.Noise(10.f * xf, 10.f * yf, 0.f);
-      const float rockSample = perlin.Noise(10.f * xf, 10.f * yf, 1.f);
-      const float treeSample = perlin.Noise(10.f * xf, 10.f * yf, 2.f);
-      const float wheatSample = perlin.Noise(10.f * xf, 10.f * yf, 3.f);
-
-      newIndex = (mountainSample >= 0.75f) ? mountainTile :
-                           (rockSample >= 0.75f) ? rockTile :
-                           (treeSample >= 0.6f) ? forestTile :
-                           (treeSample >= 0.55f) ? treeTile :
-                           (wheatSample >= 0.4f) ? wheatTile : tileIndex;
-    } else if (tileIndex == 0) {
-      // water features
-      const float waterRockSample = perlin.Noise(10.f * xf, 10.f * yf, 0.f);
-      newIndex = (waterRockSample >= 0.85f) ? waterRockTile : tileIndex;
-    }
-
-    worldData.SetTileIndex(i, newIndex);
-  }*/
 
   // world rendering setup
   auto tilesheet = TileSheet("content/textures/tileset.png", 16);
@@ -298,7 +335,7 @@ int main() {
       ReadTextFile("content/shaders/texturedFS.glsl")
   );
 
-  const float zoom = 2.f;
+  const float zoom = 1.f;
   glm::mat4 proj, view, model;
   proj = glm::ortho(0.f, float(window.Width()), float(window.Height()), 0.f, -10.f, 10.f);
   view = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
