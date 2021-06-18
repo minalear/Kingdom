@@ -7,6 +7,7 @@
 #include "entt/entt.hpp"
 #include "gui/imgui_impl_sdl.h"
 #include "math/perlin.h"
+#include "math/rng.h"
 #include "graphics/texture_2d.h"
 #include "graphics/sprite_batch.h"
 #include "gui/imgui.h"
@@ -84,6 +85,7 @@ int main() {
   // Generate map
   const int mapWidth = 256;
   const int mapHeight = 144;
+  const int mapDepth = 2;
 
   float seaLevel = 0.4f;
   float mountainLevel = 0.6f;
@@ -97,28 +99,79 @@ int main() {
   // Feature generation
   Perlin perlin(100);
 
-  entt::registry registry;
-  auto world = registry.create();
-  registry.emplace<WorldData>(world, mapWidth, mapHeight);
+  const int waterFeature = 0;
+  const int landFeature = 1;
+  const int forestFeature = 2;
+  const int mountainFeature = 3;
 
-  auto& worldData = registry.get<WorldData>(world);
-
+  auto featureMap = std::vector<int>(mapWidth * mapHeight);
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
     const float height = heightmap[i];
-
     const int x = i % mapWidth;
     const int y = i / mapWidth;
     const float xf = float(x) / float(mapWidth);
     const float yf = float(y) / float(mapHeight);
 
-    if (height == 0.f) worldData.SetTileIndex(i, 801);
+    if (height == 0.f) featureMap[i] = waterFeature;
     if (height == 1.f) {
-      const float sample = perlin.Noise(0.5f * xf, 0.5f * yf, 0.f);
-      const int id = (sample >= 0.75f) ? 326 : 81;
-      worldData.SetTileIndex(i, id);
+      const float sample = perlin.Noise(30.f * xf, 30.f * yf, 0.f);
+      featureMap[i] = (sample >= 0.58f) ? forestFeature : landFeature;
     }
-    if (height == 2.f) worldData.SetTileIndex(i, 132);
+    if (height == 2.f) featureMap[i] = mountainFeature;
   }
+
+  // Tile map creation from feature map
+  entt::registry registry;
+  auto world = registry.create();
+  registry.emplace<WorldData>(world, mapWidth, mapHeight, mapDepth);
+
+  auto& worldData = registry.get<WorldData>(world);
+
+  /*for (size_t i = 0; i < mapWidth * mapHeight * mapDepth; i++) {
+    // convert i to localized index (ignoring depth)
+    const size_t localIndex = i % (mapWidth * mapHeight);
+
+    // calculate coordinates and get height for the coordinate
+    const float height = heightmap[localIndex];
+    const int x = localIndex % mapWidth;
+    const int y = localIndex / mapWidth;
+    const int z = i / (mapWidth * mapHeight);
+
+
+  }*/
+
+  const int noTile = -1;
+  const int waterTile = 801;
+  const int grassTile = 81;
+  const int forestTile = 326;
+  const int mountainTile = 258;
+
+  // for setting tiles, assign the full depth at once based on the feature
+  size_t validTileCount = 0;
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    const int x = i % mapWidth;
+    const int y = i / mapWidth;
+
+    if (featureMap[i] == waterFeature) {
+      worldData.SetTileIndex(x, y, 0, waterTile);
+      validTileCount++;
+    } else if (featureMap[i] == landFeature) {
+      worldData.SetTileIndex(x, y, 0, rng::next_int(1, 3));
+      validTileCount++;
+    } else if (featureMap[i] == mountainFeature) {
+      worldData.SetTileIndex(x, y, 0, rng::next_int(1, 3));
+      worldData.SetTileIndex(x, y, 1, mountainTile);
+      validTileCount += 2;
+    } else if (featureMap[i] == forestFeature) {
+      worldData.SetTileIndex(x, y, 0, rng::next_int(1, 3));
+      worldData.SetTileIndex(x, y, 1, rng::next_int(1, 3) == 1 ? 286 : 326);
+      validTileCount += 2;
+    } else {
+      spdlog::critical("Invalid feature number ({}, {})", x, y);
+    }
+  }
+
+  spdlog::info("Valid Tiles: {}", validTileCount);
 
   /*const int waterTile = 0;
   const int mountainTile = 9;
@@ -169,58 +222,73 @@ int main() {
 
   // world rendering setup
   auto tilesheet = TileSheet("content/textures/tileset.png", 16);
-  auto* buffer = new float[worldData.width * worldData.height * 24];
+  //auto* buffer = new float[worldData.width * worldData.height * 24];
+  auto* buffer = new float[validTileCount * 30];
   const auto tileSize = float(tilesheet.TileSize());
   const auto size = glm::vec2(1.f / tilesheet.Width(), 1.f / tilesheet.Height());
 
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+  size_t attributeCounter = 0;
+  for (size_t i = 0; i < mapWidth * mapHeight * mapDepth; i++) {
     const auto tileIndex = worldData.GetTileIndex(i);
+    if (tileIndex == -1) continue; // -1 index represents no tile
+
     const auto point = glm::vec2(
       float(tileIndex % tilesheet.Width()) / tilesheet.Width(),
       float(tileIndex / tilesheet.Width()) / tilesheet.Height()
     );
-    const size_t x = i % mapWidth;
-    const size_t y = i / mapWidth;
 
-    buffer[i * 24 + 0] = x * tileSize;
-    buffer[i * 24 + 1] = y * tileSize;
-    buffer[i * 24 + 2] = point.x;
-    buffer[i * 24 + 3] = point.y;
+    // convert i to localized index (ignoring depth)
+    const size_t localIndex = i % (mapWidth * mapHeight);
+    const size_t x = localIndex % mapWidth;
+    const size_t y = localIndex / mapWidth;
+    const size_t z = i / (mapWidth * mapHeight);
 
-    buffer[i * 24 + 4] = x * tileSize;
-    buffer[i * 24 + 5] = y * tileSize + tileSize;
-    buffer[i * 24 + 6] = point.x;
-    buffer[i * 24 + 7] = point.y + size.y;
+    buffer[attributeCounter++] = x * tileSize;
+    buffer[attributeCounter++] = y * tileSize;
+    buffer[attributeCounter++] = z;
+    buffer[attributeCounter++] = point.x;
+    buffer[attributeCounter++] = point.y;
 
-    buffer[i * 24 + 8] = x * tileSize + tileSize;
-    buffer[i * 24 + 9] = y * tileSize;
-    buffer[i * 24 + 10] = point.x + size.x;
-    buffer[i * 24 + 11] = point.y;
+    buffer[attributeCounter++] = x * tileSize;
+    buffer[attributeCounter++] = y * tileSize + tileSize;
+    buffer[attributeCounter++] = z;
+    buffer[attributeCounter++] = point.x;
+    buffer[attributeCounter++] = point.y + size.y;
+
+    buffer[attributeCounter++] = x * tileSize + tileSize;
+    buffer[attributeCounter++] = y * tileSize;
+    buffer[attributeCounter++] = z;
+    buffer[attributeCounter++] = point.x + size.x;
+    buffer[attributeCounter++] = point.y;
 
 
-    buffer[i * 24 + 12] = x * tileSize + tileSize;
-    buffer[i * 24 + 13] = y * tileSize;
-    buffer[i * 24 + 14] = point.x + size.x;
-    buffer[i * 24 + 15] = point.y;
+    buffer[attributeCounter++] = x * tileSize + tileSize;
+    buffer[attributeCounter++] = y * tileSize;
+    buffer[attributeCounter++] = z;
+    buffer[attributeCounter++] = point.x + size.x;
+    buffer[attributeCounter++] = point.y;
 
-    buffer[i * 24 + 16] = x * tileSize;
-    buffer[i * 24 + 17] = y * tileSize + tileSize;
-    buffer[i * 24 + 18] = point.x;
-    buffer[i * 24 + 19] = point.y + size.y;
+    buffer[attributeCounter++] = x * tileSize;
+    buffer[attributeCounter++] = y * tileSize + tileSize;
+    buffer[attributeCounter++] = z;
+    buffer[attributeCounter++] = point.x;
+    buffer[attributeCounter++] = point.y + size.y;
 
-    buffer[i * 24 + 20] = x * tileSize + tileSize;
-    buffer[i * 24 + 21] = y * tileSize + tileSize;
-    buffer[i * 24 + 22] = point.x + size.x;
-    buffer[i * 24 + 23] = point.y + size.y;
+    buffer[attributeCounter++] = x * tileSize + tileSize;
+    buffer[attributeCounter++] = y * tileSize + tileSize;
+    buffer[attributeCounter++] = z;
+    buffer[attributeCounter++] = point.x + size.x;
+    buffer[attributeCounter++] = point.y + size.y;
   }
 
   VertexBuffer vBuffer;
   vBuffer.Bind();
-  vBuffer.SetBufferData(buffer, sizeof(float) * mapWidth * mapHeight * 24);
+  //vBuffer.SetBufferData(buffer, sizeof(float) * mapWidth * mapHeight * 24);
+  vBuffer.SetBufferData(buffer, sizeof(float) * validTileCount * 30);
   vBuffer.EnableVertexAttribute(0);
   vBuffer.EnableVertexAttribute(1);
-  vBuffer.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (GLvoid*)0);
-  vBuffer.VertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (GLvoid*)(2 * sizeof(float)));
+  vBuffer.VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)0);
+  vBuffer.VertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)(3 * sizeof(float)));
   vBuffer.Unbind();
 
   delete[] buffer;
@@ -230,9 +298,9 @@ int main() {
       ReadTextFile("content/shaders/texturedFS.glsl")
   );
 
-  const float zoom = 0.5f;
+  const float zoom = 2.f;
   glm::mat4 proj, view, model;
-  proj = glm::ortho(0.f, float(window.Width()), float(window.Height()), 0.f, -1.f, 1.f);
+  proj = glm::ortho(0.f, float(window.Width()), float(window.Height()), 0.f, -10.f, 10.f);
   view = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
   model = glm::mat4(1.f);
 
@@ -288,7 +356,7 @@ int main() {
           oldPos = newPos;
           newPos = glm::vec2(sdlEvent.motion.x, sdlEvent.motion.y);
 
-          cameraPos += newPos - oldPos;
+          cameraPos += (newPos - oldPos) / zoom;
 
           auto camera = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
           camera = glm::translate(camera, glm::vec3(cameraPos, 0.f));
@@ -323,7 +391,8 @@ int main() {
 
     vBuffer.Bind();
     tilesheet.Bind();
-    glDrawArrays(GL_TRIANGLES, 0, mapWidth * mapHeight * 6);
+    //glDrawArrays(GL_TRIANGLES, 0, mapWidth * mapHeight * 6);
+    glDrawArrays(GL_TRIANGLES, 0, validTileCount * 6);
     vBuffer.Unbind();
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

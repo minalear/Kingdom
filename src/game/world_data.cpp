@@ -1,37 +1,37 @@
 #include "world_data.h"
 
-WorldData::WorldData(int width, int height)
-  : width(width), height(height), tileData(width * height, 0) { }
+WorldData::WorldData(int width, int height, int depth)
+  : width(width), height(height), depth(depth), tileData(width * height * depth, -1) { }
 
 int WorldData::GetTileIndex(int index) const {
-  if (index <= 0 || index >= width * height) return 0;
+  if (index <= 0 || index >= width * height * depth) return -1;
   return tileData[index];
 }
-int WorldData::GetTileIndex(int x, int y) const {
-  if (x < 0 || x >= width || y < 0 || y >= height) return 0;
-  return tileData[x + y * width];
+int WorldData::GetTileIndex(int x, int y, int z) const {
+  if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth) return -1;
+  return tileData[(x + y * width) + (z * width * height)];
 }
 void WorldData::SetTileIndex(int index, int tile) {
-  if (index < 0 || index >= width * height) return;
+  if (index < 0 || index >= width * height * depth) return;
   tileData[index] = tile;
 }
-void WorldData::SetTileIndex(int x, int y, int tile) {
-  if (x < 0 || x >= width || y < 0 || y >= height) return;
-  tileData[x + y * width] = tile;
+void WorldData::SetTileIndex(int x, int y, int z, int tile) {
+  if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth) return;
+  tileData[(x + y * width) + (z * width * height)] = tile;
 }
 
-uint8_t WorldData::CalculateTileBitmask(int index) const {
+uint8_t WorldData::CalculateTileBitmask(int index, int z) const {
   const int x = index % width;
   const int y = index / width;
 
-  const int nw = GetTileIndex(x - 1, y - 1) == 0 ? 0 : 1;
-  const int  n = GetTileIndex(x, y - 1)     == 0 ? 0 : 1;
-  const int ne = GetTileIndex(x + 1, y - 1) == 0 ? 0 : 1;
-  const int  w = GetTileIndex(x - 1, y)     == 0 ? 0 : 1;
-  const int  e = GetTileIndex(x + 1, y)     == 0 ? 0 : 1;
-  const int sw = GetTileIndex(x - 1, y + 1) == 0 ? 0 : 1;
-  const int  s = GetTileIndex(x, y + 1)     == 0 ? 0 : 1;
-  const int se = GetTileIndex(x + 1, y + 1) == 0 ? 0 : 1;
+  const int nw = GetTileIndex(x - 1, y - 1, z) == 0 ? 0 : 1;
+  const int  n = GetTileIndex(x, y - 1, z)     == 0 ? 0 : 1;
+  const int ne = GetTileIndex(x + 1, y - 1, z) == 0 ? 0 : 1;
+  const int  w = GetTileIndex(x - 1, y, z)     == 0 ? 0 : 1;
+  const int  e = GetTileIndex(x + 1, y, z)     == 0 ? 0 : 1;
+  const int sw = GetTileIndex(x - 1, y + 1, z) == 0 ? 0 : 1;
+  const int  s = GetTileIndex(x, y + 1, z)     == 0 ? 0 : 1;
+  const int se = GetTileIndex(x + 1, y + 1, z) == 0 ? 0 : 1;
 
   uint8_t bitmask = 0x00;
   if (n && w) bitmask +=   1 * nw;
