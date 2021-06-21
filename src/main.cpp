@@ -24,6 +24,8 @@
 #include "toml.hpp"
 #include "content/tinyxml2.h"
 
+using namespace worldgen;
+
 /*void generateTextureData(const Texture2D& image) {
   auto heightmap = GenerateHeightmap(time(nullptr), mapWidth, mapHeight);
   auto imageData = new uint8_t[mapWidth * mapHeight * 4];
@@ -43,64 +45,6 @@
   image.SetTextureData(imageData);
   delete[] imageData;
 }*/
-
-template <typename T>
-bool isUniformBlock(const std::vector<T>& vec, size_t i0, T value, int mapWidth) {
-  // get indices of the 2x2 block
-  const size_t i1 = i0 + 1;
-  const size_t i2 = i0 + mapWidth;
-  const size_t i3 = i2 + 1;
-
-  const size_t len = vec.size();
-  if (i0 >= len || i1 >= len || i2 >= len || i3 >= len) return false;
-  if (i0 < 0 || i1 <= 0 || i2 <= 0 || i3 <= 0) return false;
-
-  return (vec[i0] == value && vec[i1] == value && vec[i2] == value && vec[i3] == value);
-}
-
-template <typename T>
-void setBlock(std::vector<T>& vec, size_t i0, T value, int mapWidth) {
-  // get indices of the 2x2 block
-  const size_t i1 = i0 + 1;
-  const size_t i2 = i0 + mapWidth;
-  const size_t i3 = i2 + 1;
-
-  vec[i0] = vec[i1] = vec[i2] = vec[i3] = value;
-}
-
-template <typename T>
-T getValueByCoord(const std::vector<T>& vec, int x, int y, int mapWidth) {
-  const size_t index = x + y * mapWidth;
-  if (index < 0 || index >= vec.size()) return -1;
-  return vec[index];
-}
-
-template <typename T>
-uint8_t calculateBitmask(const std::vector<T>& vec, size_t index, int flag, int mapWidth) {
-  const int x = index % mapWidth;
-  const int y = index / mapWidth;
-
-  uint8_t bitmask = 0x00;
-  const int nw = (getValueByCoord(vec, x - 1, y - 1, mapWidth) & flag) == flag ? 1 : 0;
-  const int n  = (getValueByCoord(vec, x, y - 1, mapWidth)     & flag) == flag ? 1 : 0;
-  const int ne = (getValueByCoord(vec, x + 1, y - 1, mapWidth) & flag) == flag ? 1 : 0;
-  const int w  = (getValueByCoord(vec, x - 1, y, mapWidth)     & flag) == flag ? 1 : 0;
-  const int e  = (getValueByCoord(vec, x + 1, y, mapWidth)     & flag) == flag ? 1 : 0;
-  const int sw = (getValueByCoord(vec, x - 1, y + 1, mapWidth) & flag) == flag ? 1 : 0;
-  const int s  = (getValueByCoord(vec, x, y + 1, mapWidth)     & flag) == flag ? 1 : 0;
-  const int se = (getValueByCoord(vec, x + 1, y + 1, mapWidth) & flag) == flag ? 1 : 0;
-
-  if (n && w) bitmask +=   1 * nw;
-              bitmask +=   2 * n;
-  if (n && e) bitmask +=   4 * ne;
-              bitmask +=   8 * w;
-              bitmask +=  16 * e;
-  if (s && w) bitmask +=  32 * sw;
-              bitmask +=  64 * s;
-  if (s && e) bitmask += 128 * se;
-
-  return bitmask;
-}
 
 int main() {
   spdlog::info("Initializing game...");
@@ -143,84 +87,18 @@ int main() {
   // Generate map
   const int mapWidth = 256;
   const int mapHeight = 144;
-  const int mapDepth = 3;
+  const int mapDepth = 5;
 
-  float seaLevel = 0.4f;
-  float mountainLevel = 0.6f;
+  const int seed = time(nullptr);
 
-  auto heightmap = GenerateHeightmap(time(nullptr), mapWidth, mapHeight);
+  auto heightmap = GenerateHeightmap(seed, mapWidth, mapHeight);
   for (auto& value : heightmap) {
-    value = (value <= seaLevel) ? 0.f :
-            (value <= mountainLevel) ? 1.f : 2.f;
+    //value = (value <= seaLevel) ? 0.f : (value <= mountainLevel) ? 1.f : 2.f;
+    value = (value <= 0.4f) ? 0.f : (value <= 0.55f) ? 1.f : (value <= 0.6f) ? 2.f : (value <= 0.65f) ? 3.f : 4.f;
   }
 
-  // Feature generation
-  Perlin perlin(100);
-
-  // flags for feature types (forest/mountain are on land)
-  const uint8_t waterFeature    = 0b00000000;
-  const uint8_t landFeature     = 0b00000001;
-  const uint8_t isBorder        = 0b00000010;
-  const uint8_t forestFeature   = 0b00010000 | landFeature;
-  const uint8_t mountainFeature = 0b00100000 | landFeature;
-
-  auto featureMap = std::vector<uint8_t>(mapWidth * mapHeight, waterFeature);
-
-  // First generate landmass and determine land borders, then we place mountains and trees, avoiding the borders
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    // ensure no land is generated on the map borders
-    const int x = i % mapWidth;
-    const int y = i / mapWidth;
-
-    /*if (x == 0 || x == mapWidth - 1 || y == 0 || y == mapHeight - 1) {
-      continue;
-    } else if (isUniformBlock(heightmap, i, 1.f, mapWidth)) {
-      setBlock(featureMap, i, landFeature, mapWidth);
-    }*/
-
-    if (heightmap[i] == 0.f) featureMap[i] = waterFeature;
-    if (heightmap[i] == 1.f) featureMap[i] = landFeature;
-  }
-
-  // Determine land borders by calculating bitmasks and adding a flag to indicate borders
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    if ((featureMap[i] & landFeature) == landFeature) {
-      const int bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
-      if (bitmask != 0b11111111) {
-        featureMap[i] = featureMap[i] | isBorder;
-      }
-    }
-  }
-
-  // Place mountains on land and not on borders
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    if (heightmap[i] == 2.f && (featureMap[i] & isBorder) != isBorder) {
-      featureMap[i] = mountainFeature;
-    }
-  }
-
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const size_t x = i % mapWidth;
-    const size_t y = i / mapWidth;
-
-    const float xf = float(x) / float(mapWidth);
-    const float yf = float(y) / float(mapHeight);
-
-    /*const float s0 = perlin.Noise(xf, yf, 0.f);
-    const float s1 = perlin.Noise(50.f * xf, 50.f * yf, 2.f);
-    const float s2 = perlin.Noise(200.f * xf, 200.f * yf, 4.f);
-
-    if (featureMap[i] == landFeature && (s0 + s1 + s2) / 3.f >= 0.55f) {
-      featureMap[i] = forestFeature;
-    }*/
-
-    const float s0 = perlin.Noise(0.5f * xf, 0.5f * yf, 0.f);
-    const float s1 = perlin.Noise(200.f * xf, 200.f * yf, 2.f);
-
-    if (featureMap[i] == landFeature && (s0 >= 0.6f || s1 >= 0.5f)) {
-      featureMap[i] = forestFeature;
-    }
-  }
+  //auto featureMap = std::vector<uint8_t>(mapWidth * mapHeight, waterFeature);
+  auto featureMap = GenerateFeatureMap(seed, heightmap, mapWidth, mapHeight);
 
   // Tile map creation from feature map
   entt::registry registry;
@@ -231,17 +109,6 @@ int main() {
 
   const int waterTile = 801;
   const int errorTile = 3;
-
-  // tileset bitmask data
-  // Coordinate bitmasks
-  uint8_t NW = 0b00000001;
-  uint8_t  N = 0b00000010;
-  uint8_t NE = 0b00000100;
-  uint8_t  W = 0b00001000;
-  uint8_t  E = 0b00010000;
-  uint8_t SW = 0b00100000;
-  uint8_t  S = 0b01000000;
-  uint8_t SE = 0b10000000;
 
   // Land bitmasks
   std::map<uint8_t, int> landsetMap;
@@ -404,7 +271,7 @@ int main() {
 
     // Check if the tile is on land
     if ((featureMap[i] & landFeature) == landFeature) {
-      const int bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
+      const uint8_t bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
       int index = (landsetMap.find(bitmask) == landsetMap.end()) ? errorTile : landsetMap[bitmask];
 
       // randomly vary between the base grass tiles
@@ -418,13 +285,35 @@ int main() {
 
     // Check for mountain or forest features
     if ((featureMap[i] & mountainFeature) == mountainFeature) {
-      const int bitmask = calculateBitmask(featureMap, i, mountainFeature, mapWidth);
-      int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+      const auto level1Bitmask = calculateBitmask(featureMap, i, level1Feature, mapWidth);
+      const auto level2Bitmask = calculateBitmask(featureMap, i, level2Feature, mapWidth);
+      const auto level3Bitmask = calculateBitmask(featureMap, i, level3Feature, mapWidth);
 
-      worldData.SetTileIndex(x, y, 2, index);
-      validTileCount++;
+      // Level 1
+      if ((featureMap[i] & level1Feature) == level1Feature) {
+        const uint8_t bitmask = level3Bitmask | level2Bitmask | level1Bitmask;
+        int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+        worldData.SetTileIndex(x, y, 2, index);
+        validTileCount++;
+      }
+
+      // Level 2
+      if ((featureMap[i] & level2Feature) == level2Feature) {
+        const uint8_t bitmask = level3Bitmask | level2Bitmask;
+        int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+        worldData.SetTileIndex(x, y, 3, index);
+        validTileCount++;
+      }
+
+      // Level 3
+      if ((featureMap[i] & level3Feature) == level3Feature) {
+        const uint8_t bitmask = level3Bitmask;
+        int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+        worldData.SetTileIndex(x, y, 4, index);
+        validTileCount++;
+      }
     } else if ((featureMap[i] & forestFeature) == forestFeature) {
-      const int bitmask = calculateBitmask(featureMap, i, forestFeature, mapWidth);
+      const uint8_t bitmask = calculateBitmask(featureMap, i, forestFeature, mapWidth);
       int index = (forestsetMap.find(bitmask) == forestsetMap.end()) ? errorTile : forestsetMap[bitmask];
 
       // randomly vary between the base forest tiles
@@ -582,7 +471,7 @@ int main() {
           if ((bitmask & SE) == SE) dir += "SE ";
           if ((bitmask & SW) == SW) dir += "SW ";
 
-          spdlog::info("({}, {}) - forest mask: ({:b}) {}", x, y, bitmask, dir);
+          //spdlog::info("({}, {}) - forest mask: ({:b}) {}", x, y, bitmask, dir);
         }
       }
 

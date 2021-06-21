@@ -4,7 +4,9 @@
 #include "spdlog/spdlog.h"
 #include <vector>
 
-std::vector<float> GenerateHeightmap(const uint32_t seed, const int mapWidth, const int mapHeight) {
+using namespace worldgen;
+
+std::vector<float> worldgen::GenerateHeightmap(const uint32_t seed, const int mapWidth, const int mapHeight) {
   const size_t nTiles = mapWidth * mapHeight;
   std::vector<float> heightmap(nTiles, 0.f);
 
@@ -45,7 +47,65 @@ std::vector<float> GenerateHeightmap(const uint32_t seed, const int mapWidth, co
     heightmap[i] = elevation;
   }
 
-  spdlog::info("Highest Point: {}", highest);
+  // spdlog::info("Highest Point: {}", highest);
 
   return heightmap;
+}
+
+std::vector<uint8_t> worldgen::GenerateFeatureMap(uint32_t seed, std::vector<float> heightmap, int mapWidth, int mapHeight) {
+  auto featureMap = std::vector<uint8_t>(mapWidth * mapHeight, waterFeature);
+
+  // First generate landmass and determine land borders, then we place mountains and trees, avoiding the borders
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    if (heightmap[i] == 0.f) featureMap[i] = waterFeature;
+    if (heightmap[i] == 1.f) featureMap[i] = landFeature;
+  }
+
+  // Determine land borders by calculating bitmasks and adding a flag to indicate borders
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    if ((featureMap[i] & landFeature) == landFeature) {
+      const int bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
+      if (bitmask != 0b11111111) {
+        featureMap[i] = featureMap[i] | borderFlag;
+      }
+    }
+  }
+
+  // Place mountains on land and not on borders
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    if (heightmap[i] >= 2.f && (featureMap[i] & borderFlag) != borderFlag) {
+      if (heightmap[i] == 2.f) featureMap[i] = level1Feature;
+      if (heightmap[i] == 3.f) featureMap[i] = level2Feature;
+      if (heightmap[i] == 4.f) featureMap[i] = level3Feature;
+    }
+  }
+
+  Perlin perlin(seed);
+
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    if (featureMap[i] == landFeature) {
+      const size_t x = i % mapWidth;
+      const size_t y = i / mapWidth;
+
+      const float xf = float(x) / float(mapWidth);
+      const float yf = float(y) / float(mapHeight);
+
+      /*const float s0 = perlin.Noise(xf, yf, 0.f);
+      const float s1 = perlin.Noise(50.f * xf, 50.f * yf, 2.f);
+      const float s2 = perlin.Noise(200.f * xf, 200.f * yf, 4.f);
+
+      if (featureMap[i] == landFeature && (s0 + s1 + s2) / 3.f >= 0.55f) {
+        featureMap[i] = forestFeature;
+      }*/
+
+      const float s0 = perlin.Noise(0.5f * xf, 0.5f * yf, 0.f);
+      const float s1 = perlin.Noise(200.f * xf, 200.f * yf, 2.f);
+
+      if (s0 >= 0.6f || s1 >= 0.5f) {
+        featureMap[i] = forestFeature;
+      }
+    }
+  }
+
+  return featureMap;
 }
