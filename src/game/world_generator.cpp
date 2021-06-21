@@ -32,7 +32,6 @@ std::vector<float> GenerateHeightmap(const uint32_t seed, const int mapWidth, co
     const float y = float(i / mapWidth) / float(mapHeight);
 
     const float n1 = heightmap[i];
-    //const float n1 = 1.f;
     const float n2 = 1.3f * perlin.Noise(x, y, 0.f);
     const float n3 = 1.3f * perlin.Noise(5.f * x, 5.f * y, 0.f);
     const float n4 = 1.3f * perlin.Noise(10.f * x, 10.f * y, 0.f);

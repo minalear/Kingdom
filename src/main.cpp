@@ -45,13 +45,10 @@
 }*/
 
 template <typename T>
-bool validBlock(const std::vector<T>& vec, size_t i0, T value, int width, int height) {
-  const int x = i0 % width;
-  const int y = i0 / height;
-
+bool isUniformBlock(const std::vector<T>& vec, size_t i0, T value, int mapWidth) {
   // get indices of the 2x2 block
   const size_t i1 = i0 + 1;
-  const size_t i2 = i0 + width;
+  const size_t i2 = i0 + mapWidth;
   const size_t i3 = i2 + 1;
 
   const size_t len = vec.size();
@@ -62,40 +59,45 @@ bool validBlock(const std::vector<T>& vec, size_t i0, T value, int width, int he
 }
 
 template <typename T>
-void setBlock(std::vector<T>& vec, size_t i0, T value, int width, int height) {
-  const int x = i0 % width;
-  const int y = i0 / height;
-
+void setBlock(std::vector<T>& vec, size_t i0, T value, int mapWidth) {
   // get indices of the 2x2 block
   const size_t i1 = i0 + 1;
-  const size_t i2 = i0 + width;
+  const size_t i2 = i0 + mapWidth;
   const size_t i3 = i2 + 1;
 
   vec[i0] = vec[i1] = vec[i2] = vec[i3] = value;
 }
 
 template <typename T>
-T getValueByCoord(const std::vector<T>& vec, int x, int y, int width) {
-  const size_t index = x + y * width;
+T getValueByCoord(const std::vector<T>& vec, int x, int y, int mapWidth) {
+  const size_t index = x + y * mapWidth;
   if (index < 0 || index >= vec.size()) return -1;
   return vec[index];
 }
 
 template <typename T>
-uint8_t calculateBitmask(const std::vector<T>& vec, size_t i, int width) {
-  const int x = i % width;
-  const int y = i / width;
+uint8_t calculateBitmask(const std::vector<T>& vec, size_t index, int flag, int mapWidth) {
+  const int x = index % mapWidth;
+  const int y = index / mapWidth;
 
   uint8_t bitmask = 0x00;
-  const int n = getValueByCoord(vec, x, y - 1, width);
-  const int e = getValueByCoord(vec, x + 1, y, width);
-  const int s = getValueByCoord(vec, x, y + 1, width);
-  const int w = getValueByCoord(vec, x - 1, y, width);
+  const int nw = (getValueByCoord(vec, x - 1, y - 1, mapWidth) & flag) == flag ? 1 : 0;
+  const int n  = (getValueByCoord(vec, x, y - 1, mapWidth)     & flag) == flag ? 1 : 0;
+  const int ne = (getValueByCoord(vec, x + 1, y - 1, mapWidth) & flag) == flag ? 1 : 0;
+  const int w  = (getValueByCoord(vec, x - 1, y, mapWidth)     & flag) == flag ? 1 : 0;
+  const int e  = (getValueByCoord(vec, x + 1, y, mapWidth)     & flag) == flag ? 1 : 0;
+  const int sw = (getValueByCoord(vec, x - 1, y + 1, mapWidth) & flag) == flag ? 1 : 0;
+  const int s  = (getValueByCoord(vec, x, y + 1, mapWidth)     & flag) == flag ? 1 : 0;
+  const int se = (getValueByCoord(vec, x + 1, y + 1, mapWidth) & flag) == flag ? 1 : 0;
 
-  bitmask += 1 * n;
-  bitmask += 2 * e;
-  bitmask += 4 * s;
-  bitmask += 8 * w;
+  if (n && w) bitmask +=   1 * nw;
+              bitmask +=   2 * n;
+  if (n && e) bitmask +=   4 * ne;
+              bitmask +=   8 * w;
+              bitmask +=  16 * e;
+  if (s && w) bitmask +=  32 * sw;
+              bitmask +=  64 * s;
+  if (s && e) bitmask += 128 * se;
 
   return bitmask;
 }
@@ -141,7 +143,7 @@ int main() {
   // Generate map
   const int mapWidth = 256;
   const int mapHeight = 144;
-  const int mapDepth = 2;
+  const int mapDepth = 3;
 
   float seaLevel = 0.4f;
   float mountainLevel = 0.6f;
@@ -155,47 +157,68 @@ int main() {
   // Feature generation
   Perlin perlin(100);
 
-  const int waterFeature = 0;
-  const int landFeature = 1;
-  const int forestFeature = 2;
-  const int mountainFeature = 3;
+  // flags for feature types (forest/mountain are on land)
+  const uint8_t waterFeature    = 0b00000000;
+  const uint8_t landFeature     = 0b00000001;
+  const uint8_t isBorder        = 0b00000010;
+  const uint8_t forestFeature   = 0b00010000 | landFeature;
+  const uint8_t mountainFeature = 0b00100000 | landFeature;
 
-  // initialize all features to water
-  auto featureMap = std::vector<int>(mapWidth * mapHeight, waterFeature);
+  auto featureMap = std::vector<uint8_t>(mapWidth * mapHeight, waterFeature);
 
-  // Place land and mountain features
+  // First generate landmass and determine land borders, then we place mountains and trees, avoiding the borders
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const float height = heightmap[i];
+    // ensure no land is generated on the map borders
+    const int x = i % mapWidth;
+    const int y = i / mapWidth;
 
-    // place land and mountains in 2x2 blocks
-    if (validBlock(heightmap, i, 2.f, mapWidth, mapHeight)) {
-      setBlock(featureMap, i, mountainFeature, mapWidth, mapHeight);
-    } else if (validBlock(heightmap, i, 1.f, mapWidth, mapHeight)) {
-      setBlock(featureMap, i, landFeature, mapWidth, mapHeight);
+    /*if (x == 0 || x == mapWidth - 1 || y == 0 || y == mapHeight - 1) {
+      continue;
+    } else if (isUniformBlock(heightmap, i, 1.f, mapWidth)) {
+      setBlock(featureMap, i, landFeature, mapWidth);
+    }*/
+
+    if (heightmap[i] == 0.f) featureMap[i] = waterFeature;
+    if (heightmap[i] == 1.f) featureMap[i] = landFeature;
+  }
+
+  // Determine land borders by calculating bitmasks and adding a flag to indicate borders
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    if ((featureMap[i] & landFeature) == landFeature) {
+      const int bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
+      if (bitmask != 0b11111111) {
+        featureMap[i] = featureMap[i] | isBorder;
+      }
     }
   }
 
-  // Map out forests into 2x2 blocks - skip every other y index
-  for (size_t y = 0; y < mapHeight; y += 2) {
-    for (size_t x = 0; x < mapWidth; x++) {
-      const size_t index = x + y * mapWidth;
-      if (!validBlock(featureMap, index, landFeature, mapWidth, mapHeight)) {
-        continue;
-      }
+  // Place mountains on land and not on borders
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    if (heightmap[i] == 2.f && (featureMap[i] & isBorder) != isBorder) {
+      featureMap[i] = mountainFeature;
+    }
+  }
 
-      const float xf0 = 10.f * (float(x) / float(mapWidth));
-      const float yf0 = 10.f * (float(y) / float(mapWidth));
-      const float xf1 = 10.f * (float(x + 1) / float(mapWidth));
-      const float yf1 = 10.f * (float(y + 1) / float(mapWidth));
+  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
+    const size_t x = i % mapWidth;
+    const size_t y = i / mapWidth;
 
-      const float s0 = perlin.Noise(xf0, yf0, 0.f);
-      const float s1 = perlin.Noise(xf1, yf0, 0.f);
-      const float s2 = perlin.Noise(xf0, yf1, 0.f);
-      const float s3 = perlin.Noise(xf1, yf1, 0.f);
+    const float xf = float(x) / float(mapWidth);
+    const float yf = float(y) / float(mapHeight);
 
-      if ((s0 + s1 + s2 + s3) / 4.f >= 0.6f) {
-        setBlock(featureMap, index, forestFeature, mapWidth, mapHeight);
-      }
+    /*const float s0 = perlin.Noise(xf, yf, 0.f);
+    const float s1 = perlin.Noise(50.f * xf, 50.f * yf, 2.f);
+    const float s2 = perlin.Noise(200.f * xf, 200.f * yf, 4.f);
+
+    if (featureMap[i] == landFeature && (s0 + s1 + s2) / 3.f >= 0.55f) {
+      featureMap[i] = forestFeature;
+    }*/
+
+    const float s0 = perlin.Noise(0.5f * xf, 0.5f * yf, 0.f);
+    const float s1 = perlin.Noise(200.f * xf, 200.f * yf, 2.f);
+
+    if (featureMap[i] == landFeature && (s0 >= 0.6f || s1 >= 0.5f)) {
+      featureMap[i] = forestFeature;
     }
   }
 
@@ -207,30 +230,167 @@ int main() {
   auto& worldData = registry.get<WorldData>(world);
 
   const int waterTile = 801;
-  const int grassTile = 81;
-  const int forestTile = 326;
-  const int mountainTile = 258;
+  const int errorTile = 3;
 
-  const uint8_t N = 0b0001;
-  const uint8_t E = 0b0010;
-  const uint8_t S = 0b0100;
-  const uint8_t W = 0b1000;
+  // tileset bitmask data
+  // Coordinate bitmasks
+  uint8_t NW = 0b00000001;
+  uint8_t  N = 0b00000010;
+  uint8_t NE = 0b00000100;
+  uint8_t  W = 0b00001000;
+  uint8_t  E = 0b00010000;
+  uint8_t SW = 0b00100000;
+  uint8_t  S = 0b01000000;
+  uint8_t SE = 0b10000000;
 
+  // Land bitmasks
   std::map<uint8_t, int> landsetMap;
-  landsetMap.insert(std::pair(0, 258));
-  landsetMap.insert(std::pair(N, 0));
-  landsetMap.insert(std::pair(E, 0));
-  landsetMap.insert(std::pair(S, 0));
-  landsetMap.insert(std::pair(W, 0));
-  landsetMap.insert(std::pair(N | E, 0));
-  landsetMap.insert(std::pair(N | W, 0));
-  landsetMap.insert(std::pair(N | W, 0));
-  landsetMap.insert(std::pair(N, 0));
-  landsetMap.insert(std::pair(N, 0));
-  landsetMap.insert(std::pair(N, 0));
-  landsetMap.insert(std::pair(N, 0));
-  landsetMap.insert(std::pair(N, 0));
-  landsetMap.insert(std::pair(N | S | E | W, 1));
+
+  landsetMap.insert(std::pair(0, 418));
+  landsetMap.insert(std::pair(N | S | E | W | NE | NW | SE | SW, 0));
+
+  landsetMap.insert(std::pair(N | W | NW, 423));
+  landsetMap.insert(std::pair(N | W | NW | E, 423));
+  landsetMap.insert(std::pair(N | W | NW | S, 423));
+  landsetMap.insert(std::pair(N | E | NE, 424));
+  landsetMap.insert(std::pair(N | E | NE | W, 424));
+  landsetMap.insert(std::pair(N | E | NE | S, 424));
+  landsetMap.insert(std::pair(S | E | SE, 464));
+  landsetMap.insert(std::pair(S | E | SE | W, 464));
+  landsetMap.insert(std::pair(S | E | SE | N, 464));
+  landsetMap.insert(std::pair(S | W | SW, 463));
+  landsetMap.insert(std::pair(S | W | SE | E, 463));
+  landsetMap.insert(std::pair(S | E | SE | N, 464));
+
+  landsetMap.insert(std::pair(E | W | S | SE | SW, 501));
+  landsetMap.insert(std::pair(E | W | N | NE | NW, 421));
+  landsetMap.insert(std::pair(N | S | E | NE | SE, 462));
+  landsetMap.insert(std::pair(N | S | W | NW | SW, 460));
+
+  landsetMap.insert(std::pair(N | S | E | W | NW | SE, 503));
+  landsetMap.insert(std::pair(N | S | E | W | NE | SW, 504));
+
+  landsetMap.insert(std::pair(N | S | E | W | NW | NE | SE, 422));
+  landsetMap.insert(std::pair(N | S | E | W | NW | NE | SW, 420));
+  landsetMap.insert(std::pair(N | S | E | W | NW | SW | SE, 500));
+  landsetMap.insert(std::pair(N | S | E | W | NE | SE | SW, 502));
+
+  // Tree bitmasks
+  std::map<uint8_t, int> forestsetMap;
+
+  forestsetMap.insert(std::pair(0, 286));
+  forestsetMap.insert(std::pair(N | S | E | W | NE | NW | SE | SW, 321));
+
+  forestsetMap.insert(std::pair(N, 243));
+  forestsetMap.insert(std::pair(S, 163));
+  forestsetMap.insert(std::pair(E, 164));
+  forestsetMap.insert(std::pair(W, 166));
+
+  forestsetMap.insert(std::pair(N | S, 203));
+  forestsetMap.insert(std::pair(E | W, 165));
+
+  forestsetMap.insert(std::pair(E | S, 204));
+  forestsetMap.insert(std::pair(W | S, 205));
+  forestsetMap.insert(std::pair(E | N, 244));
+  forestsetMap.insert(std::pair(W | N, 245));
+
+  forestsetMap.insert(std::pair(E | W | S, 206));
+  forestsetMap.insert(std::pair(E | W | N, 246));
+  forestsetMap.insert(std::pair(N | S | E, 207));
+  forestsetMap.insert(std::pair(N | S | W, 247));
+  forestsetMap.insert(std::pair(N | W | NW, 362));
+  forestsetMap.insert(std::pair(N | E | NE, 360));
+  forestsetMap.insert(std::pair(S | E | SE, 280));
+  forestsetMap.insert(std::pair(S | W | SW, 282));
+
+  forestsetMap.insert(std::pair(N | S | E | W, 125));
+  forestsetMap.insert(std::pair(E | W | S | SE, 168));
+  forestsetMap.insert(std::pair(E | W | S | SW, 169));
+  forestsetMap.insert(std::pair(E | W | N | NE, 208));
+  forestsetMap.insert(std::pair(E | W | N | NW, 209));
+  forestsetMap.insert(std::pair(N | S | W | SW, 248));
+  forestsetMap.insert(std::pair(N | S | E | SE, 249));
+  forestsetMap.insert(std::pair(N | S | E | NE, 289));
+  forestsetMap.insert(std::pair(N | S | W | NW, 288));
+
+  forestsetMap.insert(std::pair(E | W | S | SE | SW, 281));
+  forestsetMap.insert(std::pair(E | W | N | NE | NW, 361));
+  forestsetMap.insert(std::pair(N | S | E | NE | SE, 320));
+  forestsetMap.insert(std::pair(N | S | W | NW | SW, 322));
+
+  forestsetMap.insert(std::pair(N | S | E | W | NW, 250));
+  forestsetMap.insert(std::pair(N | S | E | W | NE, 251));
+  forestsetMap.insert(std::pair(N | S | E | W | SE, 290));
+  forestsetMap.insert(std::pair(N | S | E | W | SW, 291));
+
+  forestsetMap.insert(std::pair(N | S | E | W | NE | NW, 170));
+  forestsetMap.insert(std::pair(N | S | E | W | SE | SW, 171));
+  forestsetMap.insert(std::pair(N | S | E | W | NW | SW, 210));
+  forestsetMap.insert(std::pair(N | S | E | W | NE | SE, 211));
+  forestsetMap.insert(std::pair(N | S | E | W | NW | SE, 364));
+  forestsetMap.insert(std::pair(N | S | E | W | NE | SW, 363));
+
+  forestsetMap.insert(std::pair(N | S | E | W | NW | NE | SE, 323));
+  forestsetMap.insert(std::pair(N | S | E | W | NW | NE | SW, 324));
+  forestsetMap.insert(std::pair(N | S | E | W | NW | SW | SE, 284));
+  forestsetMap.insert(std::pair(N | S | E | W | NE | SE | SW, 283));
+
+  // Mountain bitmasks
+  std::map<uint8_t, int> mountainsetMap;
+  mountainsetMap.insert(std::pair(0, 524));
+  mountainsetMap.insert(std::pair(N | S | E | W | NW | NE | SW | SE, 441));
+
+  mountainsetMap.insert(std::pair(N, 600));
+  mountainsetMap.insert(std::pair(S, 520));
+  mountainsetMap.insert(std::pair(E, 521));
+  mountainsetMap.insert(std::pair(W, 523));
+
+  mountainsetMap.insert(std::pair(N | S, 560));
+  mountainsetMap.insert(std::pair(E | W, 522));
+
+  mountainsetMap.insert(std::pair(S | E | SE, 400));
+  mountainsetMap.insert(std::pair(S | W | SW, 402));
+  mountainsetMap.insert(std::pair(N | E | NE, 480));
+  mountainsetMap.insert(std::pair(N | W | NW, 482));
+  mountainsetMap.insert(std::pair(N | E | W, 563));
+  mountainsetMap.insert(std::pair(S | E | W, 564));
+  mountainsetMap.insert(std::pair(N | S | E, 603));
+  mountainsetMap.insert(std::pair(N | S | W, 604));
+
+  mountainsetMap.insert(std::pair(N | E | W | NW, 485));
+  mountainsetMap.insert(std::pair(N | E | W | NE, 486));
+  mountainsetMap.insert(std::pair(S | E | W | SW, 525));
+  mountainsetMap.insert(std::pair(S | E | W | SE, 526));
+
+  mountainsetMap.insert(std::pair(N | S | E | W, 365));
+
+  mountainsetMap.insert(std::pair(N | S | E | NE, 565));
+  mountainsetMap.insert(std::pair(N | S | E | SE, 566));
+  mountainsetMap.insert(std::pair(N | S | W | SW, 605));
+  mountainsetMap.insert(std::pair(N | S | W | NE, 606));
+
+  mountainsetMap.insert(std::pair(E | W | S | SW | SE, 401));
+  mountainsetMap.insert(std::pair(E | W | N | NW | NE, 481));
+  mountainsetMap.insert(std::pair(N | S | E | NE | SE, 440));
+  mountainsetMap.insert(std::pair(N | S | W | NW | SW, 442));
+
+  mountainsetMap.insert(std::pair(N | S | E | W | NE, 407));
+  mountainsetMap.insert(std::pair(N | S | E | W | NW, 447));
+  mountainsetMap.insert(std::pair(N | S | E | W | SW, 487));
+  mountainsetMap.insert(std::pair(N | S | E | W | SE, 527));
+
+  mountainsetMap.insert(std::pair(N | S | E | W | NE | SE, 405));
+  mountainsetMap.insert(std::pair(N | S | E | W | NW | SW, 406));
+  mountainsetMap.insert(std::pair(N | S | E | W | NE | NW, 445));
+  mountainsetMap.insert(std::pair(N | S | E | W | SE | SW, 446));
+
+  mountainsetMap.insert(std::pair(N | S | E | W | NE | SW, 483));
+  mountainsetMap.insert(std::pair(N | S | E | W | NW | SE, 484));
+
+  mountainsetMap.insert(std::pair(N | S | E | W | NE | SE | SW, 403));
+  mountainsetMap.insert(std::pair(N | S | E | W | NW | SE | SW, 404));
+  mountainsetMap.insert(std::pair(N | S | E | W | NE | NW | SE, 443));
+  mountainsetMap.insert(std::pair(N | S | E | W | NE | NW | SW, 444));
 
   // for setting tiles, assign the full depth at once based on the feature
   size_t validTileCount = 0;
@@ -238,22 +398,43 @@ int main() {
     const int x = i % mapWidth;
     const int y = i / mapWidth;
 
-    if (featureMap[i] == waterFeature) {
-      worldData.SetTileIndex(x, y, 0, waterTile);
+    // Set first layer tile to water
+    worldData.SetTileIndex(x, y, 0, waterTile);
+    validTileCount++;
+
+    // Check if the tile is on land
+    if ((featureMap[i] & landFeature) == landFeature) {
+      const int bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
+      int index = (landsetMap.find(bitmask) == landsetMap.end()) ? errorTile : landsetMap[bitmask];
+
+      // randomly vary between the base grass tiles
+      if (index == 0) {
+        index = rng::next_int(3); // 0 - 2 are base grass tiles
+      }
+
+      worldData.SetTileIndex(x, y, 1, index);
       validTileCount++;
-    } else if (featureMap[i] == landFeature) {
-      worldData.SetTileIndex(x, y, 0, rng::next_int(1, 3));
+    }
+
+    // Check for mountain or forest features
+    if ((featureMap[i] & mountainFeature) == mountainFeature) {
+      const int bitmask = calculateBitmask(featureMap, i, mountainFeature, mapWidth);
+      int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+
+      worldData.SetTileIndex(x, y, 2, index);
       validTileCount++;
-    } else if (featureMap[i] == mountainFeature) {
-      worldData.SetTileIndex(x, y, 0, rng::next_int(1, 3));
-      worldData.SetTileIndex(x, y, 1, mountainTile);
-      validTileCount += 2;
-    } else if (featureMap[i] == forestFeature) {
-      worldData.SetTileIndex(x, y, 0, rng::next_int(1, 3));
-      worldData.SetTileIndex(x, y, 1, rng::next_int(1, 3) == 1 ? 286 : 326);
-      validTileCount += 2;
-    } else {
-      spdlog::critical("Invalid feature number ({}, {})", x, y);
+    } else if ((featureMap[i] & forestFeature) == forestFeature) {
+      const int bitmask = calculateBitmask(featureMap, i, forestFeature, mapWidth);
+      int index = (forestsetMap.find(bitmask) == forestsetMap.end()) ? errorTile : forestsetMap[bitmask];
+
+      // randomly vary between the base forest tiles
+      if (index == 321) {
+        const int rand = rng::next_int(0, 3);
+        index = (rand == 0) ? 321 : (rand == 1) ? 285 : 325;
+      }
+
+      worldData.SetTileIndex(x, y, 2, index);
+      validTileCount++;
     }
   }
 
@@ -374,8 +555,7 @@ int main() {
       else if (sdlEvent.type == SDL_WINDOWEVENT && sdlEvent.window.event == SDL_WINDOWEVENT_CLOSE) break;
       else if (sdlEvent.type == SDL_KEYUP) {
         gEventHandler.Post(KeyboardEvent(EventType::KeyboardButtonUp, sdlEvent.key.keysym.scancode));
-      }
-      else if (sdlEvent.type == SDL_KEYDOWN) {
+      } else if (sdlEvent.type == SDL_KEYDOWN) {
         gEventHandler.Post(KeyboardEvent(EventType::KeyboardButtonDown, sdlEvent.key.keysym.scancode));
       }
 
@@ -384,6 +564,26 @@ int main() {
         oldPos = newPos = glm::vec2(sdlEvent.button.x, sdlEvent.button.y);
       } else if (sdlEvent.type == SDL_MOUSEBUTTONUP && sdlEvent.button.button == SDL_BUTTON_LEFT) {
         mouseDown = false;
+
+        const int x = int((sdlEvent.motion.x - cameraPos.x) / tileSize);
+        const int y = int((sdlEvent.motion.y - cameraPos.y) / tileSize);
+
+        const int i = y * mapWidth + x;
+        if (i >= 0 && i < mapWidth * mapHeight) {
+          const uint8_t bitmask = calculateBitmask(featureMap, i, mountainFeature, mapWidth);
+          auto dir = std::string();
+
+          if ((bitmask & N) == N) dir += "N ";
+          if ((bitmask & S) == S) dir += "S ";
+          if ((bitmask & E) == E) dir += "E ";
+          if ((bitmask & W) == W) dir += "W ";
+          if ((bitmask & NE) == NE) dir += "NE ";
+          if ((bitmask & NW) == NW) dir += "NW ";
+          if ((bitmask & SE) == SE) dir += "SE ";
+          if ((bitmask & SW) == SW) dir += "SW ";
+
+          spdlog::info("({}, {}) - forest mask: ({:b}) {}", x, y, bitmask, dir);
+        }
       }
 
       if (sdlEvent.type == SDL_MOUSEMOTION) {
