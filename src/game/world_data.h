@@ -3,12 +3,18 @@
 
 #include <vector>
 
+enum struct TILE_FLAGS {
+  None = 0b00000000,
+  Anim = 0b00000001
+};
+
 struct WorldData {
   int width;
   int height;
   int depth;
 
   std::vector<int> tileData;
+  std::vector<uint8_t> tileFlags;
 
   WorldData(int width, int height, int depth);
 

@@ -10,8 +10,12 @@ VertexBuffer::~VertexBuffer() {
   glDeleteVertexArrays(1, &vao);
 }
 
-void VertexBuffer::SetBufferData(const float *buffer, const size_t size) const {
-  glBufferData(GL_ARRAY_BUFFER, size, buffer, GL_STATIC_DRAW);
+void VertexBuffer::SetBufferData(const float *buffer, const size_t size, GLenum drawType) const {
+  glBufferData(GL_ARRAY_BUFFER, size, buffer, drawType);
+}
+
+void VertexBuffer::UpdateBufferData(const float *buffer, const size_t offset, const size_t size) const {
+  glBufferSubData(GL_ARRAY_BUFFER, 0, size, buffer);
 }
 
 void VertexBuffer::EnableVertexAttribute(GLint index) const {

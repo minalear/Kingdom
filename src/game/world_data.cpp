@@ -1,7 +1,10 @@
 #include "world_data.h"
 
 WorldData::WorldData(int width, int height, int depth)
-  : width(width), height(height), depth(depth), tileData(width * height * depth, -1) { }
+  : width(width), height(height), depth(depth),
+    tileData(width * height * depth, -1),
+    tileFlags(width * height * depth, 0x00)
+{ }
 
 int WorldData::GetTileIndex(int index) const {
   if (index < 0 || index >= width * height * depth) return -1;

@@ -12,7 +12,8 @@ public:
   VertexBuffer();
   ~VertexBuffer();
 
-  void SetBufferData(const float *buffer, size_t size) const;
+  void SetBufferData(const float *buffer, size_t size, GLenum drawType = GL_STATIC_DRAW) const;
+  void UpdateBufferData(const float *buffer, size_t offet, size_t size) const;
   void EnableVertexAttribute(GLint index) const;
   void VertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, GLvoid* pointer) const;
   void Bind() const;
