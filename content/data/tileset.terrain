@@ -1,0 +1,136 @@
+land 418 0
+land 0 N S E W NE NW SE SW
+land 900 N
+land 820 S
+land 780 E
+land 782 W
+land 860 N S
+land 781 E W
+land 1061 N E W
+land 1062 S E W
+land 1101 N S E
+land 1102 N S W
+land 423 N W NW
+land 424 N E NE
+land 464 S E SE
+land 463 S W SW
+land 940 N S E W
+land 821 N E W NW
+land 822 N E W NE
+land 861 S E W SW
+land 862 S E W SE
+land 901 N S E NE
+land 902 N S E NW
+land 941 N S W SW
+land 942 N S E SE
+land 501 E W S SE SW
+land 421 E W N NE NW
+land 462 N S E NE SE
+land 460 N S W NW SW
+land 503 N S E W NW SE
+land 504 N S E W NE SW
+land 981 N S E W NE SE
+land 982 N S E W NW SW
+land 1021 N S E W NE NW
+land 1022 N S E W SE SW
+land 422 N S E W NW NE SE
+land 420 N S E W NW NE SW
+land 500 N S E W NW SW SE
+land 502 N S E W NE SE SW
+
+forest 286 0
+forest 321 N S E W NE NW SE SW
+forest 243 N
+forest 163 S
+forest 164 E
+forest 166 W
+forest 203 N S
+forest 165 E W
+forest 204 E S
+forest 205 W S
+forest 244 E N
+forest 245 W N
+forest 206 E W S
+forest 246 E W N
+forest 207 N S E
+forest 247 N S W
+forest 362 N W NW
+forest 360 N E NE
+forest 280 S E SE
+forest 282 S W SW
+forest 125 N S E W
+forest 168 E W S SE
+forest 169 E W S SW
+forest 208 E W N NE
+forest 209 E W N NW
+forest 248 N S W SW
+forest 249 N S E SE
+forest 289 N S E NE
+forest 288 N S W NW
+forest 281 E W S SE SW
+forest 361 E W N NE NW
+forest 320 N S E NE SE
+forest 322 N S W NW SW
+forest 250 N S E W NW
+forest 251 N S E W NE
+forest 290 N S E W SE
+forest 291 N S E W SW
+forest 170 N S E W NE NW
+forest 171 N S E W SE SW
+forest 210 N S E W NW SW
+forest 211 N S E W NE SE
+forest 364 N S E W NW SE
+forest 363 N S E W NE SW
+forest 323 N S E W NW NE SE
+forest 324 N S E W NW NE SW
+forest 284 N S E W NW SW SE
+forest 283 N S E W NE SE SW
+
+mountain 524 0
+mountain 441 N S E W NW NE SW SE
+mountain 600 N
+mountain 520 S
+mountain 521 E
+mountain 523 W
+mountain 560 N S
+mountain 522 E W
+mountain 561 S E
+mountain 562 S W
+mountain 601 N E
+mountain 602 N W
+mountain 400 S E SE
+mountain 402 S W SW
+mountain 480 N E NE
+mountain 482 N W NW
+mountain 563 N E W
+mountain 564 S E W
+mountain 603 N S E
+mountain 604 N S W
+mountain 485 N E W NW
+mountain 486 N E W NE
+mountain 525 S E W SW
+mountain 526 S E W SE
+mountain 365 N S E W
+mountain 565 N S E NE
+mountain 566 N S E SE
+mountain 605 N S W SW
+mountain 606 N S W NE
+mountain 606 N S W NE NW SE
+mountain 401 E W S SW SE
+mountain 481 E W N NW NE
+mountain 440 N S E NE SE
+mountain 442 N S W NW SW
+mountain 407 N S E W NE
+mountain 447 N S E W NW
+mountain 487 N S E W SW
+mountain 527 N S E W SE
+mountain 405 N S E W NE SE
+mountain 406 N S E W NW SW
+mountain 445 N S E W NE NW
+mountain 446 N S E W SE SW
+mountain 483 N S E W NE SW
+mountain 484 N S E W NW SE
+mountain 403 N S E W NE SE SW
+mountain 404 N S E W NW SE SW
+mountain 443 N S E W NE NW SE
+mountain 444 N S E W NE NW SW

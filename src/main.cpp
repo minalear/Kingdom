@@ -23,6 +23,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "toml.hpp"
 #include "content/tinyxml2.h"
+#include "game/terrain.h"
 
 using namespace worldgen;
 
@@ -123,6 +124,8 @@ int main() {
 
   auto window = GameWindow("Kingdom", viewport_width, viewport_height);
 
+  Terrain terrain("content/data/tileset.terrain");
+
   // XML parsing test
   /*tinyxml2::XMLDocument doc;
   doc.LoadFile("content/data/tileset.tsx");
@@ -198,177 +201,6 @@ int main() {
   waterAnim.insert(std::pair(503, std::array{ 503, 508, 513, 518 }));
   waterAnim.insert(std::pair(504, std::array{ 504, 509, 514, 519 }));
 
-  // Land bitmasks
-  std::map<uint8_t, int> landsetMap;
-
-  landsetMap.insert(std::pair(0, 418));
-  landsetMap.insert(std::pair(N | S | E | W | NE | NW | SE | SW, 0));
-
-  landsetMap.insert(std::pair(N, 900));
-  landsetMap.insert(std::pair(S, 820));
-  landsetMap.insert(std::pair(E, 780));
-  landsetMap.insert(std::pair(W, 782));
-
-  landsetMap.insert(std::pair(N | S, 860));
-  landsetMap.insert(std::pair(E | W, 781));
-
-  landsetMap.insert(std::pair(N | W | NW, 423));
-  landsetMap.insert(std::pair(N | E | NE, 424));
-  landsetMap.insert(std::pair(S | E | SE, 464));
-  landsetMap.insert(std::pair(S | W | SW, 463));
-
-  landsetMap.insert(std::pair(N | S | E | W, 940));
-  landsetMap.insert(std::pair(N | E | W | NW, 821));
-  landsetMap.insert(std::pair(N | E | W | NE, 822));
-  landsetMap.insert(std::pair(S | E | W | SW, 861));
-  landsetMap.insert(std::pair(S | E | W | SE, 862));
-  landsetMap.insert(std::pair(N | S | E | NE, 901));
-  landsetMap.insert(std::pair(N | S | E | NW, 902));
-  landsetMap.insert(std::pair(N | S | W | SW, 941));
-  landsetMap.insert(std::pair(N | S | E | SE, 942));
-
-  landsetMap.insert(std::pair(E | W | S | SE | SW, 501));
-  landsetMap.insert(std::pair(E | W | N | NE | NW, 421));
-  landsetMap.insert(std::pair(N | S | E | NE | SE, 462));
-  landsetMap.insert(std::pair(N | S | W | NW | SW, 460));
-
-  landsetMap.insert(std::pair(N | S | E | W | NW | SE, 503));
-  landsetMap.insert(std::pair(N | S | E | W | NE | SW, 504));
-
-  landsetMap.insert(std::pair(N | S | E | W | NE | SE, 981));
-  landsetMap.insert(std::pair(N | S | E | W | NW | SW, 982));
-  landsetMap.insert(std::pair(N | S | E | W | NE | NW, 1021));
-  landsetMap.insert(std::pair(N | S | E | W | SE | SW, 1022));
-
-  landsetMap.insert(std::pair(N | S | E | W | NW | NE | SE, 422));
-  landsetMap.insert(std::pair(N | S | E | W | NW | NE | SW, 420));
-  landsetMap.insert(std::pair(N | S | E | W | NW | SW | SE, 500));
-  landsetMap.insert(std::pair(N | S | E | W | NE | SE | SW, 502));
-
-  // Tree bitmasks
-  std::map<uint8_t, int> forestsetMap;
-
-  forestsetMap.insert(std::pair(0, 286));
-  forestsetMap.insert(std::pair(N | S | E | W | NE | NW | SE | SW, 321));
-
-  forestsetMap.insert(std::pair(N, 243));
-  forestsetMap.insert(std::pair(S, 163));
-  forestsetMap.insert(std::pair(E, 164));
-  forestsetMap.insert(std::pair(W, 166));
-
-  forestsetMap.insert(std::pair(N | S, 203));
-  forestsetMap.insert(std::pair(E | W, 165));
-
-  forestsetMap.insert(std::pair(E | S, 204));
-  forestsetMap.insert(std::pair(W | S, 205));
-  forestsetMap.insert(std::pair(E | N, 244));
-  forestsetMap.insert(std::pair(W | N, 245));
-
-  forestsetMap.insert(std::pair(E | W | S, 206));
-  forestsetMap.insert(std::pair(E | W | N, 246));
-  forestsetMap.insert(std::pair(N | S | E, 207));
-  forestsetMap.insert(std::pair(N | S | W, 247));
-  forestsetMap.insert(std::pair(N | W | NW, 362));
-  forestsetMap.insert(std::pair(N | E | NE, 360));
-  forestsetMap.insert(std::pair(S | E | SE, 280));
-  forestsetMap.insert(std::pair(S | W | SW, 282));
-
-  forestsetMap.insert(std::pair(N | S | E | W, 125));
-  forestsetMap.insert(std::pair(E | W | S | SE, 168));
-  forestsetMap.insert(std::pair(E | W | S | SW, 169));
-  forestsetMap.insert(std::pair(E | W | N | NE, 208));
-  forestsetMap.insert(std::pair(E | W | N | NW, 209));
-  forestsetMap.insert(std::pair(N | S | W | SW, 248));
-  forestsetMap.insert(std::pair(N | S | E | SE, 249));
-  forestsetMap.insert(std::pair(N | S | E | NE, 289));
-  forestsetMap.insert(std::pair(N | S | W | NW, 288));
-
-  forestsetMap.insert(std::pair(E | W | S | SE | SW, 281));
-  forestsetMap.insert(std::pair(E | W | N | NE | NW, 361));
-  forestsetMap.insert(std::pair(N | S | E | NE | SE, 320));
-  forestsetMap.insert(std::pair(N | S | W | NW | SW, 322));
-
-  forestsetMap.insert(std::pair(N | S | E | W | NW, 250));
-  forestsetMap.insert(std::pair(N | S | E | W | NE, 251));
-  forestsetMap.insert(std::pair(N | S | E | W | SE, 290));
-  forestsetMap.insert(std::pair(N | S | E | W | SW, 291));
-
-  forestsetMap.insert(std::pair(N | S | E | W | NE | NW, 170));
-  forestsetMap.insert(std::pair(N | S | E | W | SE | SW, 171));
-  forestsetMap.insert(std::pair(N | S | E | W | NW | SW, 210));
-  forestsetMap.insert(std::pair(N | S | E | W | NE | SE, 211));
-  forestsetMap.insert(std::pair(N | S | E | W | NW | SE, 364));
-  forestsetMap.insert(std::pair(N | S | E | W | NE | SW, 363));
-
-  forestsetMap.insert(std::pair(N | S | E | W | NW | NE | SE, 323));
-  forestsetMap.insert(std::pair(N | S | E | W | NW | NE | SW, 324));
-  forestsetMap.insert(std::pair(N | S | E | W | NW | SW | SE, 284));
-  forestsetMap.insert(std::pair(N | S | E | W | NE | SE | SW, 283));
-
-  // Mountain bitmasks
-  std::map<uint8_t, int> mountainsetMap;
-  mountainsetMap.insert(std::pair(0, 524));
-  mountainsetMap.insert(std::pair(N | S | E | W | NW | NE | SW | SE, 441));
-
-  mountainsetMap.insert(std::pair(N, 600));
-  mountainsetMap.insert(std::pair(S, 520));
-  mountainsetMap.insert(std::pair(E, 521));
-  mountainsetMap.insert(std::pair(W, 523));
-
-  mountainsetMap.insert(std::pair(N | S, 560));
-  mountainsetMap.insert(std::pair(E | W, 522));
-  mountainsetMap.insert(std::pair(S | E, 561));
-  mountainsetMap.insert(std::pair(S | W, 562));
-  mountainsetMap.insert(std::pair(N | E, 601));
-  mountainsetMap.insert(std::pair(N | W, 602));
-
-  mountainsetMap.insert(std::pair(S | E | SE, 400));
-  mountainsetMap.insert(std::pair(S | W | SW, 402));
-  mountainsetMap.insert(std::pair(N | E | NE, 480));
-  mountainsetMap.insert(std::pair(N | W | NW, 482));
-  mountainsetMap.insert(std::pair(N | E | W, 563));
-  mountainsetMap.insert(std::pair(S | E | W, 564));
-  mountainsetMap.insert(std::pair(N | S | E, 603));
-  mountainsetMap.insert(std::pair(N | S | W, 604));
-
-  mountainsetMap.insert(std::pair(N | E | W | NW, 485));
-  mountainsetMap.insert(std::pair(N | E | W | NE, 486));
-  mountainsetMap.insert(std::pair(S | E | W | SW, 525));
-  mountainsetMap.insert(std::pair(S | E | W | SE, 526));
-
-  mountainsetMap.insert(std::pair(N | S | E | W, 365));
-
-  mountainsetMap.insert(std::pair(N | S | E | NE, 565));
-  mountainsetMap.insert(std::pair(N | S | E | SE, 566));
-  mountainsetMap.insert(std::pair(N | S | W | SW, 605));
-  mountainsetMap.insert(std::pair(N | S | W | NE, 606));
-
-  mountainsetMap.insert(std::pair(N | S | W | NE | NW | SE, 606));
-  mountainsetMap.insert(std::pair(N | S | W | NE | NW | SW, 606));
-
-  mountainsetMap.insert(std::pair(E | W | S | SW | SE, 401));
-  mountainsetMap.insert(std::pair(E | W | N | NW | NE, 481));
-  mountainsetMap.insert(std::pair(N | S | E | NE | SE, 440));
-  mountainsetMap.insert(std::pair(N | S | W | NW | SW, 442));
-
-  mountainsetMap.insert(std::pair(N | S | E | W | NE, 407));
-  mountainsetMap.insert(std::pair(N | S | E | W | NW, 447));
-  mountainsetMap.insert(std::pair(N | S | E | W | SW, 487));
-  mountainsetMap.insert(std::pair(N | S | E | W | SE, 527));
-
-  mountainsetMap.insert(std::pair(N | S | E | W | NE | SE, 405));
-  mountainsetMap.insert(std::pair(N | S | E | W | NW | SW, 406));
-  mountainsetMap.insert(std::pair(N | S | E | W | NE | NW, 445));
-  mountainsetMap.insert(std::pair(N | S | E | W | SE | SW, 446));
-
-  mountainsetMap.insert(std::pair(N | S | E | W | NE | SW, 483));
-  mountainsetMap.insert(std::pair(N | S | E | W | NW | SE, 484));
-
-  mountainsetMap.insert(std::pair(N | S | E | W | NE | SE | SW, 403));
-  mountainsetMap.insert(std::pair(N | S | E | W | NW | SE | SW, 404));
-  mountainsetMap.insert(std::pair(N | S | E | W | NE | NW | SE, 443));
-  mountainsetMap.insert(std::pair(N | S | E | W | NE | NW | SW, 444));
-
   // for setting tiles, assign the full depth at once based on the feature
   size_t validTileCount = 0;
   for (size_t i = 0; i < mapWidth * mapHeight; i++) {
@@ -382,7 +214,7 @@ int main() {
     // Check if the tile is on land
     if ((featureMap[i] & landFeature) == landFeature) {
       const uint8_t bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
-      int index = (landsetMap.find(bitmask) == landsetMap.end()) ? errorTile : landsetMap[bitmask];
+      int index = terrain.GetTileIndex("land", bitmask);
 
       // randomly vary between the base grass tiles
       if (index == 0) {
@@ -399,32 +231,35 @@ int main() {
       const auto level2Bitmask = calculateBitmask(featureMap, i, level2Feature, mapWidth);
       const auto level3Bitmask = calculateBitmask(featureMap, i, level3Feature, mapWidth);
 
-      // Level 1
+      // Determine elevation based on feature flags
       if ((featureMap[i] & level1Feature) == level1Feature) {
         const uint8_t bitmask = level3Bitmask | level2Bitmask | level1Bitmask;
-        int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+
+        int index = terrain.GetTileIndex("mountain", bitmask);
         worldData.SetTileIndex(x, y, 2, index);
         validTileCount++;
       }
 
-      // Level 2
       if ((featureMap[i] & level2Feature) == level2Feature) {
         const uint8_t bitmask = level3Bitmask | level2Bitmask;
-        int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+
+        int index = terrain.GetTileIndex("mountain", bitmask);
         worldData.SetTileIndex(x, y, 3, index);
         validTileCount++;
       }
 
-      // Level 3
       if ((featureMap[i] & level3Feature) == level3Feature) {
-        const uint8_t bitmask = level3Bitmask;
-        int index = (mountainsetMap.find(bitmask) == mountainsetMap.end()) ? errorTile : mountainsetMap[bitmask];
+        const uint8_t bitmask =  level3Bitmask;
+
+        int index = terrain.GetTileIndex("mountain", bitmask);
         worldData.SetTileIndex(x, y, 4, index);
         validTileCount++;
       }
+
+
     } else if ((featureMap[i] & forestFeature) == forestFeature) {
       const uint8_t bitmask = calculateBitmask(featureMap, i, forestFeature, mapWidth);
-      int index = (forestsetMap.find(bitmask) == forestsetMap.end()) ? errorTile : forestsetMap[bitmask];
+      int index = terrain.GetTileIndex("forest", bitmask);
 
       // randomly vary between the base forest tiles
       if (index == 321) {
@@ -508,6 +343,7 @@ int main() {
     // Event Handling
     if (SDL_PollEvent(&sdlEvent)) {
       ImGui_ImplSDL2_ProcessEvent(&sdlEvent);
+
       if (sdlEvent.type == SDL_QUIT) break;
       else if (sdlEvent.type == SDL_WINDOWEVENT && sdlEvent.window.event == SDL_WINDOWEVENT_CLOSE) break;
       else if (sdlEvent.type == SDL_KEYUP) {
@@ -522,41 +358,26 @@ int main() {
       } else if (sdlEvent.type == SDL_MOUSEBUTTONUP && sdlEvent.button.button == SDL_BUTTON_LEFT) {
         mouseDown = false;
 
-        const int x = int((sdlEvent.motion.x - cameraPos.x) / 16.f);
-        const int y = int((sdlEvent.motion.y - cameraPos.y) / 16.f);
+        //const int x = int((sdlEvent.motion.x - cameraPos.x) / 16.f);
+        //const int y = int((sdlEvent.motion.y - cameraPos.y) / 16.f);
 
-        const int i = y * mapWidth + x;
-        if (i >= 0 && i < mapWidth * mapHeight) {
-          const uint8_t bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
-          auto dir = std::string();
-
-          if ((bitmask & N) == N) dir += "N ";
-          if ((bitmask & S) == S) dir += "S ";
-          if ((bitmask & E) == E) dir += "E ";
-          if ((bitmask & W) == W) dir += "W ";
-          if ((bitmask & NE) == NE) dir += "NE ";
-          if ((bitmask & NW) == NW) dir += "NW ";
-          if ((bitmask & SE) == SE) dir += "SE ";
-          if ((bitmask & SW) == SW) dir += "SW ";
-
-          //spdlog::info("({}, {}) - forest mask: ({:b}) {}", x, y, bitmask, dir);
-        }
+        // click event
       }
+    }
 
-      if (sdlEvent.type == SDL_MOUSEMOTION) {
-        gEventHandler.Post(MouseMoveEvent(sdlEvent.motion.x, sdlEvent.motion.y));
+    if (sdlEvent.type == SDL_MOUSEMOTION) {
+      gEventHandler.Post(MouseMoveEvent(sdlEvent.motion.x, sdlEvent.motion.y));
 
-        if (mouseDown) {
-          oldPos = newPos;
-          newPos = glm::vec2(sdlEvent.motion.x, sdlEvent.motion.y);
+      if (mouseDown) {
+        oldPos = newPos;
+        newPos = glm::vec2(sdlEvent.motion.x, sdlEvent.motion.y);
 
-          cameraPos += (newPos - oldPos) / zoom;
+        cameraPos += (newPos - oldPos) / zoom;
 
-          auto camera = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
-          camera = glm::translate(camera, glm::vec3(cameraPos, 0.f));
-          shaderProgram.Use();
-          shaderProgram.SetUniform("view", camera);
-        }
+        auto camera = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
+        camera = glm::translate(camera, glm::vec3(cameraPos, 0.f));
+        shaderProgram.Use();
+        shaderProgram.SetUniform("view", camera);
       }
     }
 
@@ -567,7 +388,7 @@ int main() {
 
       // do fixed-step logic here with fixed_step as dt
       animTimer += fixed_step;
-      if (animTimer >= 0.6f) {
+      if (animTimer >= 0.45f) {
         animIndex = (animIndex == 3) ? 0 : animIndex + 1;
         animTimer = 0.f;
 
