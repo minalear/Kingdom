@@ -75,17 +75,17 @@ Terrain::Terrain(const std::string& path) {
   terrain_file.close();
 }
 
-int Terrain::GetTileIndex(const string &terrain, uint8_t bitmask) {
-  std::map<std::string, std::map<uint8_t, int>>::iterator terrain_it;
+int Terrain::GetTileIndex(const string &terrain, uint8_t bitmask) const {
+  std::map<std::string, std::map<uint8_t, int>>::const_iterator terrain_it;
   terrain_it = terrainData.find(terrain);
 
   if (terrain_it != terrainData.end()) {
-    std::map<uint8_t, int>::iterator tile_it;
+    std::map<uint8_t, int>::const_iterator tile_it;
     tile_it = terrain_it->second.find(bitmask);
 
     if (tile_it != terrain_it->second.end())
       return tile_it->second;
   }
 
-  return -1;
+  return 3; // 3 is errorTile, change later
 }

@@ -75,3 +75,7 @@ void SpriteBatch::Draw(const Texture2D &texture, const glm::vec2 &pos, const glm
 
   draw(texture, model);
 }
+
+ShaderProgram &SpriteBatch::GetShaderProgram() {
+  return shaderProgram;
+}

@@ -10,7 +10,7 @@ class Terrain {
 public:
   explicit Terrain(const std::string& path);
 
-  int GetTileIndex(const std::string& terrain, uint8_t bitmask);
+  int GetTileIndex(const std::string& terrain, uint8_t bitmask) const;
 };
 
 #endif //KINGDOM_TERRAIN_H

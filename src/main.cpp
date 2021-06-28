@@ -25,27 +25,42 @@
 #include "content/tinyxml2.h"
 #include "game/terrain.h"
 
-using namespace worldgen;
+void generateMinimapTexture(const Texture2D& minimap, const std::vector<uint8_t>& featuremap) {
+  using namespace worldgen;
+  auto imageData = new uint8_t[featuremap.size() * 4];
 
-/*void generateTextureData(const Texture2D& image) {
-  auto heightmap = GenerateHeightmap(time(nullptr), mapWidth, mapHeight);
-  auto imageData = new uint8_t[mapWidth * mapHeight * 4];
+  size_t i = 0;
+  for (auto feature : featuremap) {
+    if (feature == waterFeature) {
+      imageData[i * 4 + 0] = 0;
+      imageData[i * 4 + 1] = 0;
+      imageData[i * 4 + 2] = 255;
+      imageData[i * 4 + 3] = 255;
+    } else if ((feature & mountainFeature) == mountainFeature) {
+      imageData[i * 4 + 0] = 255;
+      imageData[i * 4 + 1] = 0;
+      imageData[i * 4 + 2] = 0;
+      imageData[i * 4 + 3] = 255;
+    } else if ((feature & landFeature) == landFeature){
+      imageData[i * 4 + 0] = 0;
+      imageData[i * 4 + 1] = 255;
+      imageData[i * 4 + 2] = 0;
+      imageData[i * 4 + 3] = 255;
+    }
 
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const float height = heightmap[i];
-    const uint8_t stepHeight =
-        (height <= waterLevel) ? 0 :
-        (height <= mountainLevel) ? 1 : 2;
+    if ((feature & borderFlag) == borderFlag) {
+      imageData[i * 4 + 0] = 255;
+      imageData[i * 4 + 1] = 125;
+      imageData[i * 4 + 2] = 125;
+      imageData[i * 4 + 3] = 255;
+    }
 
-    auto value = 100 * stepHeight;
-    imageData[i * 4 + 0] = value;
-    imageData[i * 4 + 1] = value;
-    imageData[i * 4 + 2] = value;
-    imageData[i * 4 + 3] = 255;
+    i++;
   }
-  image.SetTextureData(imageData);
+
+  minimap.SetTextureData(imageData);
   delete[] imageData;
-}*/
+}
 
 void generateBuffer(float* buffer, WorldData& worldData, TileSheet& tilesheet, std::map<int, std::array<int, 4>> animTable, int animIndex) {
   const int mapWidth = worldData.width;
@@ -61,8 +76,6 @@ void generateBuffer(float* buffer, WorldData& worldData, TileSheet& tilesheet, s
     if (tileIndex == -1) continue; // -1 index represents no tile
 
     // Map lookup turned out to be too slow, setting a flag for animation is much quicker
-    /*if (animTable.find(tileIndex) != animTable.end())
-      tileIndex = animTable[tileIndex][animIndex];*/
     if ((worldData.tileFlags[i] & uint8_t(TILE_FLAGS::Anim)) == uint8_t(TILE_FLAGS::Anim))
       tileIndex = animTable[tileIndex][animIndex];
 
@@ -124,8 +137,6 @@ int main() {
 
   auto window = GameWindow("Kingdom", viewport_width, viewport_height);
 
-  Terrain terrain("content/data/tileset.terrain");
-
   // XML parsing test
   /*tinyxml2::XMLDocument doc;
   doc.LoadFile("content/data/tileset.tsx");
@@ -159,136 +170,30 @@ int main() {
   // Generate map
   const int mapWidth = 256;
   const int mapHeight = 144;
-  const int mapDepth = 5;
 
-  const int seed = time(nullptr);
+  //const int seed = time(nullptr);
+  const int seed = 8008135;
 
-  auto heightmap = GenerateHeightmap(seed, mapWidth, mapHeight);
-  for (auto& value : heightmap) {
-    //value = (value <= seaLevel) ? 0.f : (value <= mountainLevel) ? 1.f : 2.f;
-    value = (value <= 0.4f) ? 0.f : (value <= 0.55f) ? 1.f : (value <= 0.6f) ? 2.f : (value <= 0.65f) ? 3.f : 4.f;
-  }
+  // Entity/Component
+  entt::registry ecsRegister;
+  auto worldEntity = ecsRegister.create();
+  ecsRegister.emplace<WorldData>(worldEntity, worldgen::GenerateGameWorld("content/data/tileset.terrain", seed, mapWidth, mapHeight));
 
-  //auto featureMap = std::vector<uint8_t>(mapWidth * mapHeight, waterFeature);
-  auto featureMap = GenerateFeatureMap(seed, heightmap, mapWidth, mapHeight);
+  auto& worldData = ecsRegister.get<WorldData>(worldEntity);
 
-  // Tile map creation from feature map
-  entt::registry registry;
-  auto world = registry.create();
-  registry.emplace<WorldData>(world, mapWidth, mapHeight, mapDepth);
-
-  auto& worldData = registry.get<WorldData>(world);
-
-  const int waterTile = 801;
-  const int errorTile = 3;
-
-  // Water animations
-  std::map<int, std::array<int, 4>> waterAnim;
-
-  waterAnim.insert(std::pair(420, std::array{ 420, 425, 430, 435 }));
-  waterAnim.insert(std::pair(421, std::array{ 421, 426, 431, 436 }));
-  waterAnim.insert(std::pair(422, std::array{ 422, 427, 432, 437 }));
-  waterAnim.insert(std::pair(460, std::array{ 460, 465, 470, 475 }));
-  waterAnim.insert(std::pair(461, std::array{ 461, 466, 471, 476 }));
-  waterAnim.insert(std::pair(462, std::array{ 462, 467, 472, 477 }));
-  waterAnim.insert(std::pair(500, std::array{ 500, 505, 510, 515 }));
-  waterAnim.insert(std::pair(501, std::array{ 501, 506, 511, 516 }));
-  waterAnim.insert(std::pair(502, std::array{ 502, 507, 512, 517 }));
-  waterAnim.insert(std::pair(423, std::array{ 423, 428, 433, 438 }));
-  waterAnim.insert(std::pair(424, std::array{ 424, 429, 434, 439 }));
-  waterAnim.insert(std::pair(463, std::array{ 463, 468, 473, 478 }));
-  waterAnim.insert(std::pair(464, std::array{ 464, 469, 474, 479 }));
-  waterAnim.insert(std::pair(503, std::array{ 503, 508, 513, 518 }));
-  waterAnim.insert(std::pair(504, std::array{ 504, 509, 514, 519 }));
-
-  // for setting tiles, assign the full depth at once based on the feature
-  size_t validTileCount = 0;
-  for (size_t i = 0; i < mapWidth * mapHeight; i++) {
-    const int x = i % mapWidth;
-    const int y = i / mapWidth;
-
-    // Set first layer tile to water
-    worldData.SetTileIndex(x, y, 0, waterTile);
-    validTileCount++;
-
-    // Check if the tile is on land
-    if ((featureMap[i] & landFeature) == landFeature) {
-      const uint8_t bitmask = calculateBitmask(featureMap, i, landFeature, mapWidth);
-      int index = terrain.GetTileIndex("land", bitmask);
-
-      // randomly vary between the base grass tiles
-      if (index == 0) {
-        index = rng::next_int(3); // 0 - 2 are base grass tiles
-      }
-
-      worldData.SetTileIndex(x, y, 1, index);
-      validTileCount++;
-    }
-
-    // Check for mountain or forest features
-    if ((featureMap[i] & mountainFeature) == mountainFeature) {
-      const auto level1Bitmask = calculateBitmask(featureMap, i, level1Feature, mapWidth);
-      const auto level2Bitmask = calculateBitmask(featureMap, i, level2Feature, mapWidth);
-      const auto level3Bitmask = calculateBitmask(featureMap, i, level3Feature, mapWidth);
-
-      // Determine elevation based on feature flags
-      if ((featureMap[i] & level1Feature) == level1Feature) {
-        const uint8_t bitmask = level3Bitmask | level2Bitmask | level1Bitmask;
-
-        int index = terrain.GetTileIndex("mountain", bitmask);
-        worldData.SetTileIndex(x, y, 2, index);
-        validTileCount++;
-      }
-
-      if ((featureMap[i] & level2Feature) == level2Feature) {
-        const uint8_t bitmask = level3Bitmask | level2Bitmask;
-
-        int index = terrain.GetTileIndex("mountain", bitmask);
-        worldData.SetTileIndex(x, y, 3, index);
-        validTileCount++;
-      }
-
-      if ((featureMap[i] & level3Feature) == level3Feature) {
-        const uint8_t bitmask =  level3Bitmask;
-
-        int index = terrain.GetTileIndex("mountain", bitmask);
-        worldData.SetTileIndex(x, y, 4, index);
-        validTileCount++;
-      }
-
-
-    } else if ((featureMap[i] & forestFeature) == forestFeature) {
-      const uint8_t bitmask = calculateBitmask(featureMap, i, forestFeature, mapWidth);
-      int index = terrain.GetTileIndex("forest", bitmask);
-
-      // randomly vary between the base forest tiles
-      if (index == 321) {
-        const int rand = rng::next_int(0, 3);
-        index = (rand == 0) ? 321 : (rand == 1) ? 285 : 325;
-      }
-
-      worldData.SetTileIndex(x, y, 2, index);
-      validTileCount++;
-    }
-  }
-
-  // Set tile flags
-  for (size_t i = 0; i < mapWidth * mapHeight * mapDepth; i++) {
-    if (waterAnim.find(worldData.tileData[i]) != waterAnim.end())
-      worldData.tileFlags[i] = uint8_t(TILE_FLAGS::Anim);
-  }
+  // minimap texture generation
+  auto minimapTexture = Texture2D(mapWidth, mapHeight);
+  generateMinimapTexture(minimapTexture, worldData.featuremap);
 
   // world rendering setup
   auto tilesheet = TileSheet("content/textures/tileset.png", 16);
-  //auto* buffer = new float[worldData.width * worldData.height * 24];
-  auto* buffer = new float[validTileCount * 30];
+  auto* buffer = new float[worldData.validTileCount * 30];
 
-  generateBuffer(buffer, worldData, tilesheet, waterAnim, 0);
+  generateBuffer(buffer, worldData, tilesheet, worldData.animTable, 0);
 
   VertexBuffer vBuffer;
   vBuffer.Bind();
-  //vBuffer.SetBufferData(buffer, sizeof(float) * mapWidth * mapHeight * 24);
-  vBuffer.SetBufferData(buffer, sizeof(float) * validTileCount * 30, GL_DYNAMIC_DRAW);
+  vBuffer.SetBufferData(buffer, sizeof(float) * worldData.validTileCount * 30, GL_DYNAMIC_DRAW);
   vBuffer.EnableVertexAttribute(0);
   vBuffer.EnableVertexAttribute(1);
   vBuffer.VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)0);
@@ -321,7 +226,6 @@ int main() {
 
   ImGui_ImplSDL2_InitForOpenGL(window.Handle(), window.GLContext());
   ImGui_ImplOpenGL3_Init("#version 400");
-  ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.6f, 1.f);
 
   // Spritebatch and grid
   SpriteBatch sb(viewport_width, viewport_height);
@@ -331,6 +235,8 @@ int main() {
   auto cameraPos = glm::vec2(0.f);
   auto oldPos = glm::vec2(0.f);
   auto newPos = glm::vec2(0.f);
+
+  auto camera = glm::mat4(1.f);
 
   // fixed step logic
   float timer = window.Dt();
@@ -358,10 +264,12 @@ int main() {
       } else if (sdlEvent.type == SDL_MOUSEBUTTONUP && sdlEvent.button.button == SDL_BUTTON_LEFT) {
         mouseDown = false;
 
-        //const int x = int((sdlEvent.motion.x - cameraPos.x) / 16.f);
-        //const int y = int((sdlEvent.motion.y - cameraPos.y) / 16.f);
+        auto worldPos = glm::inverse(camera) * glm::vec4(sdlEvent.button.x, sdlEvent.button.y, 0.f, 1.f);
+        const int x = int(worldPos.x / tilesheet.TileSize());
+        const int y = int(worldPos.y / tilesheet.TileSize());
+        const int i = x + y * mapWidth;
 
-        // click event
+        //spdlog::info("tile: ({}, {})", x, y);
       }
     }
 
@@ -374,7 +282,7 @@ int main() {
 
         cameraPos += (newPos - oldPos) / zoom;
 
-        auto camera = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
+        camera = glm::scale(glm::mat4(1.f), glm::vec3(zoom));
         camera = glm::translate(camera, glm::vec3(cameraPos, 0.f));
         shaderProgram.Use();
         shaderProgram.SetUniform("view", camera);
@@ -393,10 +301,10 @@ int main() {
         animTimer = 0.f;
 
         // Update buffer
-        generateBuffer(buffer, worldData, tilesheet, waterAnim, animIndex);
+        generateBuffer(buffer, worldData, tilesheet, worldData.animTable, animIndex);
 
         vBuffer.Bind();
-        vBuffer.UpdateBufferData(buffer, 0, sizeof(float) * validTileCount * 30);
+        vBuffer.UpdateBufferData(buffer, 0, sizeof(float) * worldData.validTileCount * 30);
         vBuffer.Unbind();
 
         //spdlog::info("ANIM INDEX: {}", animIndex);
@@ -416,17 +324,24 @@ int main() {
     ImGui::End();
 
     ImGui::Render();
+    glClearColor(1.f, 1.f, 1.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     shaderProgram.Use();
     vBuffer.Bind();
     tilesheet.Bind();
     //glDrawArrays(GL_TRIANGLES, 0, mapWidth * mapHeight * 6);
-    glDrawArrays(GL_TRIANGLES, 0, validTileCount * 6);
+    glDrawArrays(GL_TRIANGLES, 0, worldData.validTileCount * 6);
     vBuffer.Unbind();
 
     sb.Begin(gridTexture);
-    sb.Draw(gridTexture, cameraPos, glm::vec2(zoom));
+    sb.GetShaderProgram().SetUniform("view", camera);
+    sb.Draw(gridTexture, glm::vec2(0.f), glm::vec2(1.f));
+    sb.GetShaderProgram().SetUniform("view", glm::mat4(1.f));
+    sb.End();
+
+    sb.Begin(minimapTexture);
+    sb.Draw(minimapTexture, glm::vec2(viewport_width - minimapTexture.Width() - 10.f, 10.f), glm::vec2(1.f));
     sb.End();
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

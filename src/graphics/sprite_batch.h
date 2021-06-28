@@ -24,6 +24,8 @@ public:
   void Draw(const Texture2D& texture, const glm::mat4& model);
   void Draw(const Texture2D& texture, const glm::vec2& pos);
   void Draw(const Texture2D& texture, const glm::vec2& pos, const glm::vec2& scale);
+
+  ShaderProgram& GetShaderProgram();
 };
 
 #endif //KINGDOM_SPRITE_BATCH_H

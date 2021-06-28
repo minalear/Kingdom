@@ -23,8 +23,12 @@ land 901 N S E NE
 land 902 N S E NW
 land 941 N S W SW
 land 942 N S E SE
-land 501 E W S SE SW
-land 421 E W N NE NW
+land 1142 N S E W NW
+land 1141 N S E W SE
+land 1181 N S E W SW
+land 1182 N S E W NE
+land 501 S E W SE SW
+land 421 N E W NE NW
 land 462 N S E NE SE
 land 460 N S W NW SW
 land 503 N S E W NW SE
@@ -115,9 +119,10 @@ mountain 565 N S E NE
 mountain 566 N S E SE
 mountain 605 N S W SW
 mountain 606 N S W NE
-mountain 606 N S W NE NW SE
-mountain 401 E W S SW SE
-mountain 481 E W N NW NE
+mountain 606 N S W NW
+mountain 401 S E W SW SE
+mountain 481 N E W NW NE
+mountain 606 N S W NE NW
 mountain 440 N S E NE SE
 mountain 442 N S W NW SW
 mountain 407 N S E W NE

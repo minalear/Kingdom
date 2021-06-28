@@ -3,6 +3,9 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
+#include "terrain.h"
+#include "world_data.h"
 
 namespace worldgen {
   const uint8_t waterFeature    = 0b00000000;
@@ -82,8 +85,11 @@ namespace worldgen {
     return bitmask;
   }
 
+  WorldData GenerateGameWorld(const std::string& terrainPath, uint32_t seed, int mapWidth, int mapHeight);
+
   std::vector<float> GenerateHeightmap(uint32_t seed, int mapWidth, int mapHeight);
   std::vector<uint8_t> GenerateFeatureMap(uint32_t seed, std::vector<float> heightmap, int mapWidth, int mapHeight);
+  void CreateTileMap(WorldData& worldData);
 }
 
 #endif //KINGDOM_WORLD_GENERATOR_H
