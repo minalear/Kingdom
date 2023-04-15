@@ -9,7 +9,7 @@ bin/
 obj/
 #*.dll
 #*.lib
-x64/
+#x64/
 cmake-build-debug/
 Makefile
 *.make
