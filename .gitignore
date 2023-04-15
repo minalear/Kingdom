@@ -7,8 +7,8 @@
 # Build stuff
 bin/
 obj/
-*.dll
-*.lib
+#*.dll
+#*.lib
 x64/
 cmake-build-debug/
 Makefile
