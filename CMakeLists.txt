@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 # Libraries
-find_library(SDL2_LIB SDL2 PATHS "../../../lib/SDL2/lib/x64")
+find_library(SDL2_LIB SDL2 PATHS "dep/SDL2/lib/x64")
 
 # Include directories
 include_directories("dep/SDL2/include") # SDL2 headers
@@ -29,4 +29,4 @@ add_custom_command(TARGET kingdom POST_BUILD
 # Copy SDL2.dll to build path (Windows only)
 add_custom_command(TARGET kingdom POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "../../../../lib/SDL2/lib/x64/SDL2.dll" $<TARGET_FILE_DIR:kingdom>)
+    ${CMAKE_SOURCE_DIR}/dep/SDL2/lib/x64/SDL2.dll $<TARGET_FILE_DIR:kingdom>)
