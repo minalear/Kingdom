@@ -11,12 +11,12 @@ file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 find_library(SDL2_LIB SDL2 PATHS "../../../lib/SDL2/lib/x64")
 
 # Include directories
-include_directories("lib/SDL2/include") # SDL2 headers
-include_directories("lib/glm/include")  # Math headers
-include_directories("lib/glad/include") # OpenGL bindings
-include_directories("lib/spdlog/include") # Logging library
-include_directories("lib/entt/single_include") # ECS System
-include_directories("lib/toml11/include") # TOML file reading
+include_directories("dep/SDL2/include") # SDL2 headers
+include_directories("dep/glm/include")  # Math headers
+include_directories("dep/glad/include") # OpenGL bindings
+include_directories("dep/spdlog/include") # Logging library
+include_directories("dep/entt/single_include") # ECS System
+include_directories("dep/toml11/include") # TOML file reading
 
 add_executable(kingdom ${SOURCE_FILES})
 target_link_libraries(kingdom ${SDL2_LIB})
