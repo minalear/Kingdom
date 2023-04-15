@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cmath>
 #include "glad/glad.h"
 #include "core/game_window.h"
 #include "core/event.h"
@@ -7,23 +6,19 @@
 #include "entt/entt.hpp"
 #include "gui/imgui_impl_sdl.h"
 #include "math/perlin.h"
-#include "math/rng.h"
 #include "graphics/texture_2d.h"
 #include "graphics/sprite_batch.h"
 #include "gui/imgui.h"
 #include "gui/imgui_impl_sdl.h"
 #include "gui/imgui_impl_opengl3.h"
 #include "content/file_handler.h"
-#include "graphics/shader_program.h"
-#include "graphics/vertex_buffer.h"
 #include "game/world_data.h"
 #include "game/world_generator.h"
+#include "game/building_data.h"
+#include "graphics/tile_map.h"
 #include "graphics/tile_sheet.h"
-#include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "toml.hpp"
-#include "content/tinyxml2.h"
-#include "game/terrain.h"
 
 void generateMinimapTexture(const Texture2D& minimap, const std::vector<uint8_t>& featuremap) {
   using namespace worldgen;
@@ -60,73 +55,6 @@ void generateMinimapTexture(const Texture2D& minimap, const std::vector<uint8_t>
 
   minimap.SetTextureData(imageData);
   delete[] imageData;
-}
-
-void generateBuffer(float* buffer, WorldData& worldData, TileSheet& tilesheet, std::map<int, std::array<int, 4>> animTable, int animIndex) {
-  const int mapWidth = worldData.width;
-  const int mapHeight = worldData.height;
-  const int mapDepth = worldData.depth;
-
-  const auto tileSize = float(tilesheet.TileSize());
-  const auto sheetSize = glm::vec2(1.f / tilesheet.Width(), 1.f / tilesheet.Height());
-
-  size_t attributeCounter = 0;
-  for (size_t i = 0; i < mapWidth * mapHeight * mapDepth; i++) {
-    auto tileIndex = worldData.GetTileIndex(i);
-    if (tileIndex == -1) continue; // -1 index represents no tile
-
-    // Map lookup turned out to be too slow, setting a flag for animation is much quicker
-    if ((worldData.tileFlags[i] & uint8_t(TILE_FLAGS::Anim)) == uint8_t(TILE_FLAGS::Anim))
-      tileIndex = animTable[tileIndex][animIndex];
-
-    const auto point = glm::vec2(
-        float(tileIndex % tilesheet.Width()) / tilesheet.Width(),
-        float(tileIndex / tilesheet.Width()) / tilesheet.Height()
-    );
-
-    // convert i to localized index (ignoring depth)
-    const size_t localIndex = i % (mapWidth * mapHeight);
-    const size_t x = localIndex % mapWidth;
-    const size_t y = localIndex / mapWidth;
-    const size_t z = i / (mapWidth * mapHeight);
-
-    buffer[attributeCounter++] = x * tileSize;
-    buffer[attributeCounter++] = y * tileSize;
-    buffer[attributeCounter++] = z;
-    buffer[attributeCounter++] = point.x;
-    buffer[attributeCounter++] = point.y;
-
-    buffer[attributeCounter++] = x * tileSize;
-    buffer[attributeCounter++] = y * tileSize + tileSize;
-    buffer[attributeCounter++] = z;
-    buffer[attributeCounter++] = point.x;
-    buffer[attributeCounter++] = point.y + sheetSize.y;
-
-    buffer[attributeCounter++] = x * tileSize + tileSize;
-    buffer[attributeCounter++] = y * tileSize;
-    buffer[attributeCounter++] = z;
-    buffer[attributeCounter++] = point.x + sheetSize.x;
-    buffer[attributeCounter++] = point.y;
-
-
-    buffer[attributeCounter++] = x * tileSize + tileSize;
-    buffer[attributeCounter++] = y * tileSize;
-    buffer[attributeCounter++] = z;
-    buffer[attributeCounter++] = point.x + sheetSize.x;
-    buffer[attributeCounter++] = point.y;
-
-    buffer[attributeCounter++] = x * tileSize;
-    buffer[attributeCounter++] = y * tileSize + tileSize;
-    buffer[attributeCounter++] = z;
-    buffer[attributeCounter++] = point.x;
-    buffer[attributeCounter++] = point.y + sheetSize.y;
-
-    buffer[attributeCounter++] = x * tileSize + tileSize;
-    buffer[attributeCounter++] = y * tileSize + tileSize;
-    buffer[attributeCounter++] = z;
-    buffer[attributeCounter++] = point.x + sheetSize.x;
-    buffer[attributeCounter++] = point.y + sheetSize.y;
-  }
 }
 
 int main() {
@@ -171,8 +99,8 @@ int main() {
   const int mapWidth = 256;
   const int mapHeight = 144;
 
-  //const int seed = time(nullptr);
-  const int seed = 8008135;
+  const int seed = time(nullptr);
+  //const int seed = 8008135;
 
   // Entity/Component
   entt::registry ecsRegister;
@@ -181,26 +109,15 @@ int main() {
 
   auto& worldData = ecsRegister.get<WorldData>(worldEntity);
 
+  TileMap tileMap(mapWidth, mapHeight, worldData.validTileCount);
+
   // minimap texture generation
   auto minimapTexture = Texture2D(mapWidth, mapHeight);
   generateMinimapTexture(minimapTexture, worldData.featuremap);
 
   // world rendering setup
   auto tilesheet = TileSheet("content/textures/tileset.png", 16);
-  auto* buffer = new float[worldData.validTileCount * 30];
-
-  generateBuffer(buffer, worldData, tilesheet, worldData.animTable, 0);
-
-  VertexBuffer vBuffer;
-  vBuffer.Bind();
-  vBuffer.SetBufferData(buffer, sizeof(float) * worldData.validTileCount * 30, GL_DYNAMIC_DRAW);
-  vBuffer.EnableVertexAttribute(0);
-  vBuffer.EnableVertexAttribute(1);
-  vBuffer.VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)0);
-  vBuffer.VertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)(3 * sizeof(float)));
-  vBuffer.Unbind();
-
-  //delete[] buffer;
+  tileMap.GenerateBuffer(worldData.tileData, tilesheet);
 
   auto shaderProgram = ShaderProgram(
       ReadTextFile("content/shaders/texturedVS.glsl"),
@@ -269,6 +186,9 @@ int main() {
         const int y = int(worldPos.y / tilesheet.TileSize());
         const int i = x + y * mapWidth;
 
+        auto building = ecsRegister.create();
+        ecsRegister.emplace<BuildingData>(building, 730, x, y);
+
         //spdlog::info("tile: ({}, {})", x, y);
       }
     }
@@ -301,11 +221,7 @@ int main() {
         animTimer = 0.f;
 
         // Update buffer
-        generateBuffer(buffer, worldData, tilesheet, worldData.animTable, animIndex);
-
-        vBuffer.Bind();
-        vBuffer.UpdateBufferData(buffer, 0, sizeof(float) * worldData.validTileCount * 30);
-        vBuffer.Unbind();
+        tileMap.GenerateAnimatedBuffer(worldData.tileData, worldData.tileFlags, tilesheet, worldData.animTable, animIndex);
 
         //spdlog::info("ANIM INDEX: {}", animIndex);
       }
@@ -328,11 +244,10 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     shaderProgram.Use();
-    vBuffer.Bind();
+    tileMap.vertexBuffer.Bind();
     tilesheet.Bind();
-    //glDrawArrays(GL_TRIANGLES, 0, mapWidth * mapHeight * 6);
-    glDrawArrays(GL_TRIANGLES, 0, worldData.validTileCount * 6);
-    vBuffer.Unbind();
+    glDrawArrays(GL_TRIANGLES, 0, tileMap.tileCount * 6);
+    tileMap.vertexBuffer.Unbind();
 
     sb.Begin(gridTexture);
     sb.GetShaderProgram().SetUniform("view", camera);

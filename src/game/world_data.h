@@ -5,13 +5,9 @@
 #include <map>
 #include <array>
 #include "terrain.h"
+#include "../graphics/tile_sheet.h"
 
-enum struct TILE_FLAGS {
-  None = 0b00000000,
-  Anim = 0b00000001
-};
 
-typedef std::map<int, std::array<int, 4>> AnimTable;
 
 struct WorldData {
   int width;

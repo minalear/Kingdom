@@ -1,6 +1,7 @@
 #ifndef KINGDOM_PERLIN_H
 #define KINGDOM_PERLIN_H
 
+#include <cstdint>
 #include <vector>
 
 class Perlin {
